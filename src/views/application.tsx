@@ -12,13 +12,14 @@ import {ActiveProfileState} from '../app-state/active-profile-state'
 import {LeftHeavyFlamechartView, ChronoFlamechartView} from './flamechart-view-container'
 import {CanvasContext} from '../gl/canvas-context'
 import {Toolbar} from './toolbar'
+import {IntervalSelector} from './interval-selector'
 import {importJavaScriptSourceMapSymbolRemapper} from '../lib/js-source-map'
 import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
 import {HashParams} from '../lib/hash-params'
-import {StatelessComponent} from '../lib/preact-helpers'
+import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
 
 const importModule = import('../import')
@@ -71,7 +72,7 @@ interface GLCanvasProps {
   theme: Theme
   setGLCanvas: (canvas: HTMLCanvasElement | null) => void
 }
-export class GLCanvas extends StatelessComponent<GLCanvasProps> {
+export class GLCanvas extends Component<GLCanvasProps> {
   private canvas: HTMLCanvasElement | null = null
 
   private ref = (canvas: Element | null) => {
@@ -169,7 +170,26 @@ export type ApplicationProps = {
   error: boolean
 }
 
-export class Application extends StatelessComponent<ApplicationProps> {
+interface ApplicationState {
+  showIntervalSelector: boolean
+  selectedStartValue: number
+  selectedEndValue: number
+  showLoadingScreen: boolean
+  loadingMessage: string
+}
+
+export class Application extends Component<ApplicationProps, ApplicationState> {
+  constructor(props: ApplicationProps) {
+    super(props)
+    this.state = {
+      showIntervalSelector: false,
+      selectedStartValue: 0,
+      selectedEndValue: 0,
+      showLoadingScreen: false,
+      loadingMessage: '',
+    }
+  }
+
   private async loadProfile(loader: () => Promise<ProfileGroup | null>) {
     this.props.setError(false)
     this.props.setLoading(true)
@@ -379,6 +399,391 @@ export class Application extends StatelessComponent<ApplicationProps> {
       }
       saveToFile(profileGroup)
     }
+  }
+
+  private sendToAPI = () => {
+    if (this.props.profileGroup && this.props.activeProfileState) {
+      // Get current viewport state to sync with zoom
+      const activeProfile = this.props.activeProfileState.profile
+      const viewState = this.getCurrentViewState()
+
+      let initialStartValue = 0
+      let initialEndValue = activeProfile.getTotalWeight()
+
+      if (viewState && viewState.configSpaceViewportRect) {
+        const rect = viewState.configSpaceViewportRect
+        initialStartValue = Math.max(0, rect.origin.x)
+        initialEndValue = Math.min(activeProfile.getTotalWeight(), rect.origin.x + rect.size.x)
+      }
+
+      // Show interval selector with current viewport range
+      this.setState({
+        showIntervalSelector: true,
+        selectedStartValue: initialStartValue,
+        selectedEndValue: initialEndValue,
+      })
+    }
+  }
+
+  private getCurrentViewState() {
+    if (!this.props.activeProfileState) return null
+
+    // Get the current view state based on the active view mode
+    switch (this.props.viewMode) {
+      case ViewMode.CHRONO_FLAME_CHART:
+        return this.props.activeProfileState.chronoViewState
+      case ViewMode.LEFT_HEAVY_FLAME_GRAPH:
+        return this.props.activeProfileState.leftHeavyViewState
+      case ViewMode.SANDWICH_VIEW:
+        return (
+          this.props.activeProfileState.sandwichViewState.callerCallee?.invertedCallerFlamegraph ||
+          null
+        )
+      default:
+        return null
+    }
+  }
+
+  // Strict interval filtering with synthetic events at boundaries
+  private filterEventsWithContext(events: any[], intervalStart: number, intervalEnd: number) {
+    // Track frame states and events within the interval
+    const framesInInterval = new Set<number>()
+    const frameStates = new Map<number, {hasOpen: boolean, hasClose: boolean, openTime?: number, closeTime?: number}>()
+    const filteredEvents: any[] = []
+    
+    // First pass: identify frames active in interval and collect their events
+    for (const event of events) {
+      if (event.at >= intervalStart && event.at <= intervalEnd) {
+        framesInInterval.add(event.frame)
+        
+        if (!frameStates.has(event.frame)) {
+          frameStates.set(event.frame, {hasOpen: false, hasClose: false})
+        }
+        
+        const frameState = frameStates.get(event.frame)!
+        
+        if (event.type === 'O') {
+          frameState.hasOpen = true
+          frameState.openTime = event.at
+          filteredEvents.push(event)
+        } else if (event.type === 'C') {
+          frameState.hasClose = true
+          frameState.closeTime = event.at
+          filteredEvents.push(event)
+        }
+      }
+    }
+    
+    // Second pass: add synthetic events for frames that need them
+    const syntheticEvents: any[] = []
+    
+    for (const [frameId, frameState] of frameStates) {
+      if (frameState.hasOpen && !frameState.hasClose) {
+        // Frame opened in interval but didn't close - add synthetic close at interval end
+        syntheticEvents.push({
+          type: 'C',
+          frame: frameId,
+          at: parseInt(intervalEnd.toString())
+        })
+        console.log(`Added synthetic close for frame ${frameId} at ${intervalEnd}`)
+      } else if (!frameState.hasOpen && frameState.hasClose) {
+        // Frame closed in interval but didn't open - add synthetic open at interval start
+        syntheticEvents.push({
+          type: 'O',
+          frame: frameId,
+          at: parseInt(intervalStart.toString())
+        })
+        console.log(`Added synthetic open for frame ${frameId} at ${intervalStart}`)
+      }
+    }
+    
+    // Combine filtered events with synthetic events and sort by timestamp
+    const allEvents = [...filteredEvents, ...syntheticEvents]
+    const sortedEvents = allEvents.sort((a, b) => a.at - b.at)
+    
+    console.log(`Filtered ${filteredEvents.length} events + ${syntheticEvents.length} synthetic events = ${sortedEvents.length} total events for ${framesInInterval.size} active frames`)
+    return sortedEvents
+  }
+
+  private handleIntervalConfirm = async (
+    startValue: number,
+    endValue: number,
+    oauthConfig: any,
+    analysisPrompt?: string,
+    filteredJsonData?: string,
+  ) => {
+    this.setState({
+      showIntervalSelector: false,
+      selectedStartValue: startValue,
+      selectedEndValue: endValue,
+      showLoadingScreen: true,
+      loadingMessage: 'Preparing profile data...',
+    })
+
+    if (this.props.profileGroup && this.props.activeProfileState) {
+      const {name} = this.props.profileGroup
+
+      try {
+        let jsonData: string
+        
+        if (filteredJsonData) {
+          // Use the pre-filtered JSON data from the preview
+          console.log('Using pre-filtered JSON data from preview')
+          this.setState({loadingMessage: 'Using filtered profile data...'})
+          jsonData = filteredJsonData
+        } else {
+          // Fallback: generate the JSON data (this shouldn't happen with the new flow)
+          console.log('Fallback: generating JSON data from scratch')
+          const activeProfile = this.props.activeProfileState.profile
+          
+          // Create frames mapping
+          const frames: any[] = []
+          const indexForFrame = new Map<any, number>()
+          
+          function getIndexForFrame(frame: any): number {
+            let index = indexForFrame.get(frame)
+            if (index == null) {
+              const serializedFrame: any = {
+                name: frame.name,
+              }
+              if (frame.file != null) serializedFrame.file = frame.file
+              if (frame.line != null) serializedFrame.line = frame.line
+              if (frame.col != null) serializedFrame.col = frame.col
+              index = frames.length
+              indexForFrame.set(frame, index)
+              frames.push(serializedFrame)
+            }
+            return index
+          }
+
+          // Generate events using non-blocking approach
+          const events: any[] = []
+          let eventCount = 0
+          const maxEvents = 100000 // Safety limit to prevent infinite loops
+          
+          const openFrame = (node: any, value: number) => {
+            if (eventCount >= maxEvents) {
+              console.warn('Event limit reached, stopping event generation')
+              return
+            }
+            events.push({
+              type: 'O',
+              frame: getIndexForFrame(node.frame),
+              at: parseInt(value.toString()), // Convert to integer
+            })
+            eventCount++
+          }
+          const closeFrame = (node: any, value: number) => {
+            if (eventCount >= maxEvents) {
+              console.warn('Event limit reached, stopping event generation')
+              return
+            }
+            events.push({
+              type: 'C',
+              frame: getIndexForFrame(node.frame),
+              at: parseInt(value.toString()), // Convert to integer
+            })
+            eventCount++
+          }
+          
+          console.log('Starting event generation...')
+          this.setState({loadingMessage: 'Generating events...'})
+          
+          // Use setTimeout to yield control back to the browser
+          await new Promise<void>((resolve) => {
+            setTimeout(() => {
+              try {
+                activeProfile.forEachCall(openFrame, closeFrame)
+                console.log(`Generated ${events.length} events`)
+                resolve()
+              } catch (error) {
+                console.error('Error during event generation:', error)
+                throw error
+              }
+            }, 0)
+          })
+          
+          // Apply filtering with progress updates
+          console.log('Starting event filtering...')
+          this.setState({loadingMessage: 'Filtering events...'})
+          
+          const filteredEvents = await new Promise<any[]>((resolve) => {
+            setTimeout(() => {
+              const result = this.filterEventsWithContext(events, startValue, endValue)
+              console.log(`Filtered to ${result.length} events`)
+              resolve(result)
+            }, 0)
+          })
+          
+          // Create the exported data structure
+          this.setState({loadingMessage: 'Building JSON structure...'})
+          
+          // Use the actual first and last event timestamps from the filtered events, converted to integers
+          const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
+          const profileStartValue = sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
+          const profileEndValue = sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
+          
+          console.log('Profile boundaries:', {
+            profileStartValue,
+            profileEndValue,
+            firstEventAt: sortedEvents[0]?.at,
+            lastEventAt: sortedEvents[sortedEvents.length - 1]?.at,
+            totalEvents: filteredEvents.length
+          })
+          
+          const file = {
+            exporter: `speedscope@${require('../../package.json').version}`,
+            name: `${name} (${activeProfile.formatValue(startValue)} - ${activeProfile.formatValue(endValue)})`,
+            activeProfileIndex: 0,
+            $schema: 'https://www.speedscope.app/file-format-schema.json',
+            shared: {frames},
+            profiles: [{
+              type: 'evented',
+              name: activeProfile.getName(),
+              unit: activeProfile.getWeightUnit(),
+              startValue: profileStartValue,
+              endValue: profileEndValue,
+              events: filteredEvents,
+            }],
+          }
+          
+          // JSON serialization with progress update
+          console.log('Starting JSON serialization...')
+          this.setState({loadingMessage: 'Serializing JSON...'})
+          
+          jsonData = await new Promise<string>((resolve) => {
+            setTimeout(() => {
+              const result = JSON.stringify(file)
+              console.log(`JSON serialized, length: ${result.length}`)
+              resolve(result)
+            }, 0)
+          })
+        }
+
+        // Get the active profile for formatting values
+        const activeProfile = this.props.activeProfileState.profile
+
+        // Get LLM configuration from user
+        const llmEndpoint =
+          prompt('Enter LLM inference URL:', 'https://api.openai.com/v1/chat/completions') ||
+          'https://api.openai.com/v1/chat/completions'
+
+        let authHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        }
+
+        // Use OAuth configuration from interval selector
+        const selectedConfig = {
+          endpoint: oauthConfig.oauthUrl,
+          client_id: oauthConfig.clientId,
+          client_secret: oauthConfig.clientSecret,
+          grant_type: 'client_credentials',
+        }
+
+        try {
+          // Get OAuth token using client credentials flow
+          const oauthResponse = await fetch(selectedConfig.endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              grant_type: selectedConfig.grant_type,
+              client_id: selectedConfig.client_id,
+              client_secret: selectedConfig.client_secret,
+            }).toString(),
+          })
+
+          if (!oauthResponse.ok) {
+            throw new Error(`OAuth failed: ${oauthResponse.status} ${oauthResponse.statusText}`)
+          }
+
+          const oauthData = await oauthResponse.json()
+          const accessToken = oauthData.access_token
+
+          if (!accessToken) {
+            throw new Error('No access token received from OAuth server')
+          }
+
+          authHeaders['Authorization'] = `Bearer ${accessToken}`
+        } catch (oauthError) {
+          console.error('OAuth error:', oauthError)
+          const errorMessage =
+            oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
+          alert(
+            `OAuth authentication failed: ${errorMessage}\n\nPlease check your OAuth endpoint and credentials.`,
+          )
+          return
+        }
+
+        // Use the prompt from the interval selector or default
+        const finalPrompt =
+          analysisPrompt || 'Identify performance bottlenecks in this profile data'
+
+        // Prepare LLM request payload
+        const llmPayload = {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.',
+            },
+            {
+              role: 'user',
+              content: `${finalPrompt}\n\nProfile data:\n${jsonData}`,
+            },
+          ],
+          max_tokens: 2000,
+          temperature: 0.3,
+        }
+
+        // Send to LLM API
+        this.setState({loadingMessage: 'Sending to LLM API...'})
+        const response = await fetch(llmEndpoint, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify(llmPayload),
+        })
+
+        if (response.ok) {
+          const responseData = await response.json()
+          const llmResponse = responseData.choices?.[0]?.message?.content || 'No analysis received'
+
+          // Hide loading screen
+          this.setState({showLoadingScreen: false})
+
+          // Show LLM analysis in a more detailed alert
+          alert(
+            `LLM Analysis for interval ${activeProfile.formatValue(
+              startValue,
+            )} - ${activeProfile.formatValue(endValue)}:\n\n${llmResponse}`,
+          )
+        } else {
+          // Hide loading screen
+          this.setState({showLoadingScreen: false})
+          
+          alert(
+            `Failed to get LLM analysis: ${response.status} ${response.statusText}\n\nPlease check your authentication and endpoint configuration.`,
+          )
+        }
+      } catch (error) {
+        // Hide loading screen
+        this.setState({showLoadingScreen: false})
+        
+        console.error('Error getting LLM analysis:', error)
+        alert(
+          'Error getting LLM analysis. Check console for details.\n\nPlease verify your endpoint URL and authentication credentials.',
+        )
+      }
+    }
+  }
+
+  private handleIntervalCancel = () => {
+    this.setState({
+      showIntervalSelector: false,
+      showLoadingScreen: false,
+    })
   }
 
   private browseForFile = () => {
@@ -603,10 +1008,30 @@ export class Application extends StatelessComponent<ApplicationProps> {
         <Toolbar
           saveFile={this.saveFile}
           browseForFile={this.browseForFile}
+          sendToAPI={this.sendToAPI}
           {...(this.props as ApplicationProps)}
         />
         <div className={css(style.contentContainer)}>{this.renderContent()}</div>
         {this.props.dragActive && <div className={css(style.dragTarget)} />}
+        {this.state.showIntervalSelector && this.props.activeProfileState && (
+          <IntervalSelector
+            profile={this.props.activeProfileState.profile}
+            onConfirm={this.handleIntervalConfirm}
+            onCancel={this.handleIntervalCancel}
+            theme={this.props.theme}
+            initialStartValue={this.state.selectedStartValue}
+            initialEndValue={this.state.selectedEndValue}
+          />
+        )}
+        {this.state.showLoadingScreen && (
+          <div className={css(style.loadingOverlay)}>
+            <div className={css(style.loadingModal)}>
+              <div className={css(style.loadingSpinner)}>⏳</div>
+              <div className={css(style.loadingMessage)}>{this.state.loadingMessage}</div>
+              <div className={css(style.loadingSubtext)}>Processing profile data...</div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -720,6 +1145,54 @@ const getStyle = withTheme(theme =>
       ':hover': {
         color: theme.selectionSecondaryColor,
       },
+    },
+    loadingOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    },
+    loadingModal: {
+      backgroundColor: theme.bgPrimaryColor,
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      borderRadius: 8,
+      padding: 32,
+      textAlign: 'center',
+      minWidth: 300,
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+    },
+    loadingSpinner: {
+      fontSize: 48,
+      marginBottom: 16,
+      animationName: [
+        {
+          from: {
+            transform: 'rotate(0deg)',
+          },
+          to: {
+            transform: 'rotate(360deg)',
+          },
+        },
+      ],
+      animationDuration: '2s',
+      animationIterationCount: 'infinite',
+      animationTimingFunction: 'linear',
+    },
+    loadingMessage: {
+      fontSize: FontSize.TITLE,
+      fontWeight: 'bold',
+      color: theme.fgPrimaryColor,
+      marginBottom: 8,
+    },
+    loadingSubtext: {
+      fontSize: FontSize.LABEL,
+      color: theme.fgSecondaryColor,
     },
   }),
 )
