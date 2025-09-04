@@ -448,20 +448,23 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
   private filterEventsWithContext(events: any[], intervalStart: number, intervalEnd: number) {
     // Track frame states and events within the interval
     const framesInInterval = new Set<number>()
-    const frameStates = new Map<number, {hasOpen: boolean, hasClose: boolean, openTime?: number, closeTime?: number}>()
+    const frameStates = new Map<
+      number,
+      {hasOpen: boolean; hasClose: boolean; openTime?: number; closeTime?: number}
+    >()
     const filteredEvents: any[] = []
-    
+
     // First pass: identify frames active in interval and collect their events
     for (const event of events) {
       if (event.at >= intervalStart && event.at <= intervalEnd) {
         framesInInterval.add(event.frame)
-        
+
         if (!frameStates.has(event.frame)) {
           frameStates.set(event.frame, {hasOpen: false, hasClose: false})
         }
-        
+
         const frameState = frameStates.get(event.frame)!
-        
+
         if (event.type === 'O') {
           frameState.hasOpen = true
           frameState.openTime = event.at
@@ -473,17 +476,17 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         }
       }
     }
-    
+
     // Second pass: add synthetic events for frames that need them
     const syntheticEvents: any[] = []
-    
+
     for (const [frameId, frameState] of frameStates) {
       if (frameState.hasOpen && !frameState.hasClose) {
         // Frame opened in interval but didn't close - add synthetic close at interval end
         syntheticEvents.push({
           type: 'C',
           frame: frameId,
-          at: parseInt(intervalEnd.toString())
+          at: parseInt(intervalEnd.toString()),
         })
         console.log(`Added synthetic close for frame ${frameId} at ${intervalEnd}`)
       } else if (!frameState.hasOpen && frameState.hasClose) {
@@ -491,17 +494,19 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         syntheticEvents.push({
           type: 'O',
           frame: frameId,
-          at: parseInt(intervalStart.toString())
+          at: parseInt(intervalStart.toString()),
         })
         console.log(`Added synthetic open for frame ${frameId} at ${intervalStart}`)
       }
     }
-    
+
     // Combine filtered events with synthetic events and sort by timestamp
     const allEvents = [...filteredEvents, ...syntheticEvents]
     const sortedEvents = allEvents.sort((a, b) => a.at - b.at)
-    
-    console.log(`Filtered ${filteredEvents.length} events + ${syntheticEvents.length} synthetic events = ${sortedEvents.length} total events for ${framesInInterval.size} active frames`)
+
+    console.log(
+      `Filtered ${filteredEvents.length} events + ${syntheticEvents.length} synthetic events = ${sortedEvents.length} total events for ${framesInInterval.size} active frames`,
+    )
     return sortedEvents
   }
 
@@ -525,7 +530,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
 
       try {
         let jsonData: string
-        
+
         if (filteredJsonData) {
           // Use the pre-filtered JSON data from the preview
           console.log('Using pre-filtered JSON data from preview')
@@ -535,11 +540,11 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           // Fallback: generate the JSON data (this shouldn't happen with the new flow)
           console.log('Fallback: generating JSON data from scratch')
           const activeProfile = this.props.activeProfileState.profile
-          
+
           // Create frames mapping
           const frames: any[] = []
           const indexForFrame = new Map<any, number>()
-          
+
           function getIndexForFrame(frame: any): number {
             let index = indexForFrame.get(frame)
             if (index == null) {
@@ -560,7 +565,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           const events: any[] = []
           let eventCount = 0
           const maxEvents = 100000 // Safety limit to prevent infinite loops
-          
+
           const openFrame = (node: any, value: number) => {
             if (eventCount >= maxEvents) {
               console.warn('Event limit reached, stopping event generation')
@@ -585,12 +590,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             })
             eventCount++
           }
-          
+
           console.log('Starting event generation...')
           this.setState({loadingMessage: 'Generating events...'})
-          
+
           // Use setTimeout to yield control back to the browser
-          await new Promise<void>((resolve) => {
+          await new Promise<void>(resolve => {
             setTimeout(() => {
               try {
                 activeProfile.forEachCall(openFrame, closeFrame)
@@ -602,56 +607,64 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
               }
             }, 0)
           })
-          
+
           // Apply filtering with progress updates
           console.log('Starting event filtering...')
           this.setState({loadingMessage: 'Filtering events...'})
-          
-          const filteredEvents = await new Promise<any[]>((resolve) => {
+
+          const filteredEvents = await new Promise<any[]>(resolve => {
             setTimeout(() => {
               const result = this.filterEventsWithContext(events, startValue, endValue)
               console.log(`Filtered to ${result.length} events`)
               resolve(result)
             }, 0)
           })
-          
+
           // Create the exported data structure
           this.setState({loadingMessage: 'Building JSON structure...'})
-          
+
           // Use the actual first and last event timestamps from the filtered events, converted to integers
           const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
-          const profileStartValue = sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
-          const profileEndValue = sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
-          
+          const profileStartValue =
+            sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
+          const profileEndValue =
+            sortedEvents.length > 0
+              ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString())
+              : 0
+
           console.log('Profile boundaries:', {
             profileStartValue,
             profileEndValue,
             firstEventAt: sortedEvents[0]?.at,
             lastEventAt: sortedEvents[sortedEvents.length - 1]?.at,
-            totalEvents: filteredEvents.length
+            totalEvents: filteredEvents.length,
           })
-          
+
           const file = {
             exporter: `speedscope@${require('../../package.json').version}`,
-            name: `${name} (${activeProfile.formatValue(startValue)} - ${activeProfile.formatValue(endValue)})`,
+            name: `${name} (${activeProfile.formatValue(startValue)} - ${activeProfile.formatValue(
+              endValue,
+            )})`,
             activeProfileIndex: 0,
             $schema: 'https://www.speedscope.app/file-format-schema.json',
             shared: {frames},
-            profiles: [{
-              type: 'evented',
-              name: activeProfile.getName(),
-              unit: activeProfile.getWeightUnit(),
-              startValue: profileStartValue,
-              endValue: profileEndValue,
-              events: filteredEvents,
-            }],
+            profiles: [
+              {
+                type: 'evented',
+                name: activeProfile.getName(),
+                unit: activeProfile.getWeightUnit(),
+                startValue: profileStartValue,
+                endValue: profileEndValue,
+                events: filteredEvents,
+              },
+            ],
           }
-          
+
           // JSON serialization with progress update
           console.log('Starting JSON serialization...')
           this.setState({loadingMessage: 'Serializing JSON...'})
-          
-          jsonData = await new Promise<string>((resolve) => {
+
+          jsonData = await new Promise<string>(resolve => {
             setTimeout(() => {
               const result = JSON.stringify(file)
               console.log(`JSON serialized, length: ${result.length}`)
@@ -762,7 +775,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         } else {
           // Hide loading screen
           this.setState({showLoadingScreen: false})
-          
+
           alert(
             `Failed to get LLM analysis: ${response.status} ${response.statusText}\n\nPlease check your authentication and endpoint configuration.`,
           )
@@ -770,7 +783,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
       } catch (error) {
         // Hide loading screen
         this.setState({showLoadingScreen: false})
-        
+
         console.error('Error getting LLM analysis:', error)
         alert(
           'Error getting LLM analysis. Check console for details.\n\nPlease verify your endpoint URL and authentication credentials.',

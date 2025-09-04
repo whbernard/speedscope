@@ -43,12 +43,6 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [selectedPrompt, setSelectedPrompt] = useState('')
-  const [jsonPreview, setJsonPreview] = useState('')
-  const [condensedView, setCondensedView] = useState('')
-  const [showCondensedView, setShowCondensedView] = useState(false)
-  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false)
-  const [previewProgress, setPreviewProgress] = useState('')
-  const [filteredJsonData, setFilteredJsonData] = useState<string>('')
 
   // Sample prompts for LLM analysis
   const samplePrompts = [
@@ -76,325 +70,73 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   )
 
   // Strict interval filtering with synthetic events at boundaries
-  const filterEventsWithContext = useCallback((events: any[], intervalStart: number, intervalEnd: number) => {
-    // Track frame states and events within the interval
-    const framesInInterval = new Set<number>()
-    const frameStates = new Map<number, {hasOpen: boolean, hasClose: boolean, openTime?: number, closeTime?: number}>()
-    const filteredEvents: any[] = []
-    
-    // First pass: identify frames active in interval and collect their events
-    for (const event of events) {
-      if (event.at >= intervalStart && event.at <= intervalEnd) {
-        framesInInterval.add(event.frame)
-        
-        if (!frameStates.has(event.frame)) {
-          frameStates.set(event.frame, {hasOpen: false, hasClose: false})
-        }
-        
-        const frameState = frameStates.get(event.frame)!
-        
-        if (event.type === 'O') {
-          frameState.hasOpen = true
-          frameState.openTime = event.at
-          filteredEvents.push(event)
-        } else if (event.type === 'C') {
-          frameState.hasClose = true
-          frameState.closeTime = event.at
-          filteredEvents.push(event)
-        }
-      }
-    }
-    
-    // Second pass: add synthetic events for frames that need them
-    const syntheticEvents: any[] = []
-    
-    for (const [frameId, frameState] of frameStates) {
-      if (frameState.hasOpen && !frameState.hasClose) {
-        // Frame opened in interval but didn't close - add synthetic close at interval end
-        syntheticEvents.push({
-          type: 'C',
-          frame: frameId,
-          at: parseInt(intervalEnd.toString())
-        })
-        console.log(`Added synthetic close for frame ${frameId} at ${intervalEnd}`)
-      } else if (!frameState.hasOpen && frameState.hasClose) {
-        // Frame closed in interval but didn't open - add synthetic open at interval start
-        syntheticEvents.push({
-          type: 'O',
-          frame: frameId,
-          at: parseInt(intervalStart.toString())
-        })
-        console.log(`Added synthetic open for frame ${frameId} at ${intervalStart}`)
-      }
-    }
-    
-    // Combine filtered events with synthetic events and sort by timestamp
-    const allEvents = [...filteredEvents, ...syntheticEvents]
-    const sortedEvents = allEvents.sort((a, b) => a.at - b.at)
-    
-    console.log(`Filtered ${filteredEvents.length} events + ${syntheticEvents.length} synthetic events = ${sortedEvents.length} total events for ${framesInInterval.size} active frames`)
-    return sortedEvents
-  }, [])
+  const filterEventsWithContext = useCallback(
+    (events: any[], intervalStart: number, intervalEnd: number) => {
+      // Track frame states and events within the interval
+      const framesInInterval = new Set<number>()
+      const frameStates = new Map<
+        number,
+        {hasOpen: boolean; hasClose: boolean; openTime?: number; closeTime?: number}
+      >()
+      const filteredEvents: any[] = []
 
-  const generateJsonPreview = useCallback(async () => {
-    setIsGeneratingPreview(true)
-    setPreviewProgress('Preparing profile data...')
-    
-    try {
-      // Get the original profile data directly
-      const originalProfile = props.profile
-      
-      // Create frames mapping
-      const frames: any[] = []
-      const indexForFrame = new Map<any, number>()
-      
-      function getIndexForFrame(frame: any): number {
-        let index = indexForFrame.get(frame)
-        if (index == null) {
-          const serializedFrame: any = {
-            name: frame.name,
-          }
-          if (frame.file != null) serializedFrame.file = frame.file
-          if (frame.line != null) serializedFrame.line = frame.line
-          if (frame.col != null) serializedFrame.col = frame.col
-          index = frames.length
-          indexForFrame.set(frame, index)
-          frames.push(serializedFrame)
-        }
-        return index
-      }
+      // First pass: identify frames active in interval and collect their events
+      for (const event of events) {
+        if (event.at >= intervalStart && event.at <= intervalEnd) {
+          framesInInterval.add(event.frame)
 
-      // Generate events using non-blocking approach
-      setPreviewProgress('Generating events...')
-      const events: any[] = []
-      const openFrame = (node: any, value: number) => {
-        events.push({
-          type: 'O',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()), // Convert to integer
-        })
-      }
-      const closeFrame = (node: any, value: number) => {
-        events.push({
-          type: 'C',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()), // Convert to integer
-        })
-      }
-      
-      // Use setTimeout to yield control back to the browser
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          originalProfile.forEachCall(openFrame, closeFrame)
-          resolve()
-        }, 0)
-      })
-      
-      // Apply advanced filtering algorithm
-      setPreviewProgress('Filtering events...')
-      const filteredEvents = await new Promise<any[]>((resolve) => {
-        setTimeout(() => {
-          const result = filterEventsWithContext(events, startValue, endValue)
-          resolve(result)
-        }, 0)
-      })
-      
-      // Use the actual first and last event timestamps from the filtered events, converted to integers
-      const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
-      const profileStartValue = sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
-      const profileEndValue = sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
-      
-      console.log('Profile boundaries:', {
-        profileStartValue,
-        profileEndValue,
-        firstEventAt: sortedEvents[0]?.at,
-        lastEventAt: sortedEvents[sortedEvents.length - 1]?.at,
-        totalEvents: filteredEvents.length
-      })
-      
-      // Create the exported data structure
-      setPreviewProgress('Building JSON structure...')
-      const exportedData = {
-        exporter: `speedscope@${require('../../package.json').version}`,
-        name: `${props.profile.getName()} (${formatValue(startValue)} - ${formatValue(endValue)})`,
-        activeProfileIndex: 0,
-        $schema: 'https://www.speedscope.app/file-format-schema.json',
-        shared: {frames},
-        profiles: [{
-          type: 'evented',
-          name: props.profile.getName(),
-          unit: props.profile.getWeightUnit(),
-          startValue: profileStartValue,
-          endValue: profileEndValue,
-          events: filteredEvents,
-        }],
-      }
-      
-      // JSON serialization with progress update
-      setPreviewProgress('Serializing JSON...')
-      const jsonString = await new Promise<string>((resolve) => {
-        setTimeout(() => {
-          const result = JSON.stringify(exportedData, null, 2)
-          resolve(result)
-        }, 0)
-      })
-      
-      const truncatedJson =
-        jsonString.length > 5000 ? jsonString.substring(0, 5000) + '\n... (truncated)' : jsonString
-
-      setJsonPreview(truncatedJson)
-      setFilteredJsonData(jsonString) // Store the full JSON data for sending to LLM
-      setPreviewProgress('')
-    } catch (error) {
-      setJsonPreview('Error generating JSON preview: ' + (error as Error).message)
-      setPreviewProgress('')
-    } finally {
-      setIsGeneratingPreview(false)
-    }
-  }, [startValue, endValue, props.profile, formatValue, filterEventsWithContext])
-
-  const generateCondensedView = useCallback(async () => {
-    try {
-      // Get the original profile data directly
-      const originalProfile = props.profile
-      
-      // Create frames mapping
-      const frames: any[] = []
-      const indexForFrame = new Map<any, number>()
-      
-      function getIndexForFrame(frame: any): number {
-        let index = indexForFrame.get(frame)
-        if (index == null) {
-          const serializedFrame: any = {
-            name: frame.name,
-          }
-          if (frame.file != null) serializedFrame.file = frame.file
-          if (frame.line != null) serializedFrame.line = frame.line
-          if (frame.col != null) serializedFrame.col = frame.col
-          index = frames.length
-          indexForFrame.set(frame, index)
-          frames.push(serializedFrame)
-        }
-        return index
-      }
-
-      // Generate events using non-blocking approach
-      const events: any[] = []
-      const openFrame = (node: any, value: number) => {
-        events.push({
-          type: 'O',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()), // Convert to integer
-        })
-      }
-      const closeFrame = (node: any, value: number) => {
-        events.push({
-          type: 'C',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()), // Convert to integer
-        })
-      }
-      
-      // Use setTimeout to yield control back to the browser
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          originalProfile.forEachCall(openFrame, closeFrame)
-          resolve()
-        }, 0)
-      })
-      
-      // Apply advanced filtering algorithm
-      const filteredEvents = await new Promise<any[]>((resolve) => {
-        setTimeout(() => {
-          const result = filterEventsWithContext(events, startValue, endValue)
-          resolve(result)
-        }, 0)
-      })
-      
-      // Create the exported data structure
-      const exportedData = {
-        exporter: `speedscope@${require('../../package.json').version}`,
-        name: `${props.profile.getName()} (${formatValue(startValue)} - ${formatValue(endValue)})`,
-        activeProfileIndex: 0,
-        $schema: 'https://www.speedscope.app/file-format-schema.json',
-        shared: {frames},
-        profiles: [{
-          type: 'evented',
-          name: props.profile.getName(),
-          unit: props.profile.getWeightUnit(),
-          startValue: startValue,
-          endValue: endValue,
-          events: filteredEvents,
-        }],
-      }
-
-      // Generate condensed view from samples
-      let condensedOutput = '=== CONDENSED VIEW ===\n\n'
-      
-      // Create frame number to frame name mapping
-      const frameMap = new Map<number, string>()
-      for (let i = 0; i < exportedData.shared.frames.length; i++) {
-        const frame = exportedData.shared.frames[i]
-        frameMap.set(i, frame.name)
-      }
-
-      // Display frame mapping
-      condensedOutput += 'FRAME MAPPING:\n'
-      condensedOutput += 'Frame # | Frame Name\n'
-      condensedOutput += '--------|-----------\n'
-      for (let i = 0; i < exportedData.shared.frames.length; i++) {
-        const frame = exportedData.shared.frames[i]
-        condensedOutput += `${i.toString().padStart(7)} | ${frame.name}\n`
-      }
-      condensedOutput += '\n'
-
-      if (exportedData.profiles.length > 0) {
-        const profile = exportedData.profiles[0]
-        if (profile.type === 'evented') {
-          // Track the call stack from events
-          const callStack: number[] = []
-          const stackHistory: Array<{time: number; stack: number[]}> = []
-          
-          // Sort events by timestamp
-          const sortedEvents = [...profile.events].sort((a, b) => a.at - b.at)
-          
-          for (const event of sortedEvents) {
-            if (event.type === 'O') { // Open frame
-              callStack.push(event.frame)
-            } else if (event.type === 'C') { // Close frame
-              const frameIndex = callStack.lastIndexOf(event.frame)
-              if (frameIndex !== -1) {
-                callStack.splice(frameIndex, 1)
-              }
-            }
-            
-            // Record the current stack state
-            stackHistory.push({
-              time: event.at,
-              stack: [...callStack]
-            })
+          if (!frameStates.has(event.frame)) {
+            frameStates.set(event.frame, {hasOpen: false, hasClose: false})
           }
 
-          // Display condensed view
-          condensedOutput += 'CONDENSED VIEW:\n'
-          condensedOutput += 'Time | Stack (Frame #s)\n'
-          condensedOutput += '-----|-----------------\n'
-          
-          for (const entry of stackHistory) {
-            const timeFormatted = formatValue(entry.time)
-            const stackStr = entry.stack.length > 0 ? `[${entry.stack.join(' ')}]` : '[]'
-            condensedOutput += `${timeFormatted.padStart(4)} | ${stackStr}\n`
+          const frameState = frameStates.get(event.frame)!
+
+          if (event.type === 'O') {
+            frameState.hasOpen = true
+            frameState.openTime = event.at
+            filteredEvents.push(event)
+          } else if (event.type === 'C') {
+            frameState.hasClose = true
+            frameState.closeTime = event.at
+            filteredEvents.push(event)
           }
         }
       }
 
-      setCondensedView(condensedOutput)
-    } catch (error) {
-      setCondensedView('Error generating condensed view: ' + (error as Error).message)
-    }
-  }, [startValue, endValue, props.profile, formatValue, filterEventsWithContext])
+      // Second pass: add synthetic events for frames that need them
+      const syntheticEvents: any[] = []
 
+      for (const [frameId, frameState] of frameStates) {
+        if (frameState.hasOpen && !frameState.hasClose) {
+          // Frame opened in interval but didn't close - add synthetic close at interval end
+          syntheticEvents.push({
+            type: 'C',
+            frame: frameId,
+            at: parseInt(intervalEnd.toString()),
+          })
+          console.log(`Added synthetic close for frame ${frameId} at ${intervalEnd}`)
+        } else if (!frameState.hasOpen && frameState.hasClose) {
+          // Frame closed in interval but didn't open - add synthetic open at interval start
+          syntheticEvents.push({
+            type: 'O',
+            frame: frameId,
+            at: parseInt(intervalStart.toString()),
+          })
+          console.log(`Added synthetic open for frame ${frameId} at ${intervalStart}`)
+        }
+      }
 
+      // Combine filtered events with synthetic events and sort by timestamp
+      const allEvents = [...filteredEvents, ...syntheticEvents]
+      const sortedEvents = allEvents.sort((a, b) => a.at - b.at)
+
+      console.log(
+        `Filtered ${filteredEvents.length} events + ${syntheticEvents.length} synthetic events = ${sortedEvents.length} total events for ${framesInInterval.size} active frames`,
+      )
+      return sortedEvents
+    },
+    [],
+  )
 
   // Update values when initial values change (for sync functionality)
   useEffect(() => {
@@ -408,40 +150,15 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
   }, [props.initialStartValue, props.initialEndValue, totalWeight])
 
-  // Generate JSON preview when interval changes
-  useEffect(() => {
-    const generatePreviews = async () => {
-      await generateJsonPreview()
-      await generateCondensedView()
-    }
-    generatePreviews()
-  }, [generateJsonPreview, generateCondensedView])
-
-  // Regenerate JSON preview when initial values change (for when user reopens modal with new interval)
-  useEffect(() => {
-    if (props.initialStartValue !== undefined && props.initialEndValue !== undefined) {
-      const generatePreviews = async () => {
-        await generateJsonPreview()
-        await generateCondensedView()
-      }
-      generatePreviews()
-    }
-  }, [
-    props.initialStartValue,
-    props.initialEndValue,
-    generateJsonPreview,
-    generateCondensedView,
-  ])
-
   const handleExportJson = () => {
     try {
       // Get the original profile data directly
       const originalProfile = props.profile
-      
+
       // Create frames mapping
       const frames: any[] = []
       const indexForFrame = new Map<any, number>()
-      
+
       function getIndexForFrame(frame: any): number {
         let index = indexForFrame.get(frame)
         if (index == null) {
@@ -474,17 +191,19 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
           at: parseInt(value.toString()), // Convert to integer
         })
       }
-      
+
       originalProfile.forEachCall(openFrame, closeFrame)
-      
+
       // Apply advanced filtering algorithm
       const filteredEvents = filterEventsWithContext(events, startValue, endValue)
-      
+
       // Use the actual first and last event timestamps from the filtered events, converted to integers
       const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
-      const profileStartValue = sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
-      const profileEndValue = sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
-      
+      const profileStartValue =
+        sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
+      const profileEndValue =
+        sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
+
       // Create the exported data structure
       const exportedData = {
         exporter: `speedscope@${require('../../package.json').version}`,
@@ -492,16 +211,18 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
         activeProfileIndex: 0,
         $schema: 'https://www.speedscope.app/file-format-schema.json',
         shared: {frames},
-        profiles: [{
-          type: 'evented',
-          name: props.profile.getName(),
-          unit: props.profile.getWeightUnit(),
-          startValue: profileStartValue,
-          endValue: profileEndValue,
-          events: filteredEvents,
-        }],
+        profiles: [
+          {
+            type: 'evented',
+            name: props.profile.getName(),
+            unit: props.profile.getWeightUnit(),
+            startValue: profileStartValue,
+            endValue: profileEndValue,
+            events: filteredEvents,
+          },
+        ],
       }
-      
+
       const jsonString = JSON.stringify(exportedData, null, 2)
 
       // Create a blob and download link
@@ -519,6 +240,85 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
   }
 
+  const generateFilteredJsonData = () => {
+    try {
+      // Get the original profile data directly
+      const originalProfile = props.profile
+
+      // Create frames mapping
+      const frames: any[] = []
+      const indexForFrame = new Map<any, number>()
+
+      function getIndexForFrame(frame: any): number {
+        let index = indexForFrame.get(frame)
+        if (index == null) {
+          const serializedFrame: any = {
+            name: frame.name,
+          }
+          if (frame.file != null) serializedFrame.file = frame.file
+          if (frame.line != null) serializedFrame.line = frame.line
+          if (frame.col != null) serializedFrame.col = frame.col
+          index = frames.length
+          indexForFrame.set(frame, index)
+          frames.push(serializedFrame)
+        }
+        return index
+      }
+
+      // Generate events
+      const events: any[] = []
+      const openFrame = (node: any, value: number) => {
+        events.push({
+          type: 'O',
+          frame: getIndexForFrame(node.frame),
+          at: parseInt(value.toString()),
+        })
+      }
+      const closeFrame = (node: any, value: number) => {
+        events.push({
+          type: 'C',
+          frame: getIndexForFrame(node.frame),
+          at: parseInt(value.toString()),
+        })
+      }
+
+      originalProfile.forEachCall(openFrame, closeFrame)
+
+      // Apply filtering algorithm
+      const filteredEvents = filterEventsWithContext(events, startValue, endValue)
+
+      // Use the actual first and last event timestamps from the filtered events
+      const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
+      const profileStartValue =
+        sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
+      const profileEndValue =
+        sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
+
+      // Create the exported data structure
+      const exportedData = {
+        exporter: `speedscope@${require('../../package.json').version}`,
+        name: `${props.profile.getName()} (${formatValue(startValue)} - ${formatValue(endValue)})`,
+        activeProfileIndex: 0,
+        $schema: 'https://www.speedscope.app/file-format-schema.json',
+        shared: {frames},
+        profiles: [
+          {
+            type: 'evented',
+            name: props.profile.getName(),
+            unit: props.profile.getWeightUnit(),
+            startValue: profileStartValue,
+            endValue: profileEndValue,
+            events: filteredEvents,
+          },
+        ],
+      }
+
+      return JSON.stringify(exportedData, null, 2)
+    } catch (error) {
+      throw new Error('Error generating JSON data: ' + (error as Error).message)
+    }
+  }
+
   const handleConfirm = () => {
     if (!oauthUrl || !clientId || !clientSecret) {
       alert('Please fill in all OAuth fields: OAuth URL, CLIENT_ID, and CLIENT_SECRET')
@@ -530,17 +330,17 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
       return
     }
 
-    if (!filteredJsonData) {
-      alert('Please wait for the preview to finish generating before sending to LLM')
-      return
+    try {
+      const jsonData = generateFilteredJsonData()
+      const oauthConfig: OAuthConfig = {
+        oauthUrl,
+        clientId,
+        clientSecret,
+      }
+      props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, jsonData)
+    } catch (error) {
+      alert('Error preparing data for LLM: ' + (error as Error).message)
     }
-
-    const oauthConfig: OAuthConfig = {
-      oauthUrl,
-      clientId,
-      clientSecret,
-    }
-    props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, filteredJsonData)
   }
 
   return (
@@ -661,52 +461,10 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
           </div>
         </div>
 
-        <div className={css(style.jsonPreviewSection)}>
-          <div className={css(style.jsonPreviewHeader)}>
-            <h4>Preview</h4>
-            <div className={css(style.previewButtons)}>
-              <button
-                className={css(
-                  style.viewToggleButton,
-                  showCondensedView ? style.inactiveButton : style.activeButton,
-                )}
-                onClick={() => setShowCondensedView(false)}
-              >
-                JSON
-              </button>
-              <button
-                className={css(
-                  style.viewToggleButton,
-                  showCondensedView ? style.activeButton : style.inactiveButton,
-                )}
-                onClick={() => setShowCondensedView(true)}
-              >
-                Condensed
-              </button>
-              <button className={css(style.exportButton)} onClick={handleExportJson}>
-                📁 Export JSON
-              </button>
-            </div>
-          </div>
-          <p className={css(style.jsonPreviewInfo)}>
-            {showCondensedView
-              ? 'Condensed view showing call stack changes over time:'
-              : 'Preview of the filtered profile data that will be sent to the LLM:'}
-          </p>
-          <div className={css(style.jsonPreviewContainer)}>
-            {isGeneratingPreview ? (
-              <div className={css(style.previewLoading)}>
-                <div className={css(style.previewSpinner)}>⏳</div>
-                <div className={css(style.previewLoadingText)}>
-                  {previewProgress || 'Generating preview...'}
-                </div>
-              </div>
-            ) : (
-              <pre className={css(style.jsonPreview)}>
-                {showCondensedView ? condensedView : jsonPreview}
-              </pre>
-            )}
-          </div>
+        <div className={css(style.exportSection)}>
+          <button className={css(style.exportButton)} onClick={handleExportJson}>
+            📁 Export JSON
+          </button>
         </div>
 
         <div className={css(style.actions)}>
@@ -923,48 +681,14 @@ const getStyle = withTheme(theme =>
         borderColor: theme.selectionPrimaryColor,
       },
     },
-    jsonPreviewSection: {
+    exportSection: {
       marginTop: '20px',
       padding: '16px',
-      background: theme.bgSecondaryColor,
-      borderRadius: '4px',
-      border: `1px solid ${theme.fgSecondaryColor}`,
-    },
-    jsonPreviewHeader: {
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '12px',
-    },
-    previewButtons: {
-      display: 'flex',
-      gap: '8px',
-      alignItems: 'center',
-    },
-    viewToggleButton: {
-      padding: '4px 8px',
-      border: `1px solid ${theme.fgSecondaryColor}`,
-      borderRadius: '4px',
-      background: theme.bgPrimaryColor,
-      color: theme.fgPrimaryColor,
-      fontFamily: FontFamily.MONOSPACE,
-      fontSize: FontSize.LABEL,
-      cursor: 'pointer',
-      transition: `all ${Duration.HOVER_CHANGE} ease-in`,
-    },
-    activeButton: {
-      background: theme.selectionPrimaryColor,
-      color: theme.altFgPrimaryColor,
-    },
-    inactiveButton: {
-      background: theme.bgPrimaryColor,
-      color: theme.fgPrimaryColor,
-      ':hover': {
-        background: theme.bgSecondaryColor,
-      },
+      justifyContent: 'center',
     },
     exportButton: {
-      padding: '6px 12px',
+      padding: '8px 16px',
       border: `1px solid ${theme.fgSecondaryColor}`,
       borderRadius: '4px',
       background: theme.bgPrimaryColor,
@@ -977,56 +701,6 @@ const getStyle = withTheme(theme =>
         background: theme.selectionPrimaryColor,
         color: theme.altFgPrimaryColor,
       },
-    },
-    jsonPreviewInfo: {
-      marginBottom: '12px',
-      fontSize: FontSize.LABEL,
-      color: theme.fgSecondaryColor,
-    },
-    jsonPreviewContainer: {
-      maxHeight: '400px',
-      overflow: 'auto',
-      border: `1px solid ${theme.fgSecondaryColor}`,
-      borderRadius: '4px',
-      background: theme.bgPrimaryColor,
-    },
-    jsonPreview: {
-      margin: 0,
-      padding: '12px',
-      fontSize: FontSize.LABEL,
-      fontFamily: FontFamily.MONOSPACE,
-      color: theme.fgPrimaryColor,
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-    },
-    previewLoading: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '40px 20px',
-      color: theme.fgSecondaryColor,
-    },
-    previewSpinner: {
-      fontSize: 24,
-      marginBottom: 12,
-      animationName: [
-        {
-          from: {
-            transform: 'rotate(0deg)',
-          },
-          to: {
-            transform: 'rotate(360deg)',
-          },
-        },
-      ],
-      animationDuration: '2s',
-      animationIterationCount: 'infinite',
-      animationTimingFunction: 'linear',
-    },
-    previewLoadingText: {
-      fontSize: FontSize.LABEL,
-      textAlign: 'center',
     },
   }),
 )

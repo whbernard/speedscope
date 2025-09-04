@@ -16,6 +16,7 @@ import {useAtom} from '../lib/atom'
 interface ToolbarProps extends ApplicationProps {
   browseForFile(): void
   saveFile(): void
+  sendToAPI(): void
 }
 
 function useSetViewMode(setViewMode: (viewMode: ViewMode) => void, viewMode: ViewMode) {
@@ -160,6 +161,11 @@ function ToolbarRightContent(props: ToolbarProps) {
   const style = getStyle(useTheme())
   const colorScheme = useAtom(colorSchemeAtom)
 
+  const sendToLLM = (
+    <div className={css(style.toolbarTab)} onClick={props.sendToAPI}>
+      <span className={css(style.emoji)}>🤖</span>Send to LLM
+    </div>
+  )
   const exportFile = (
     <div className={css(style.toolbarTab)} onClick={props.saveFile}>
       <span className={css(style.emoji)}>⤴️</span>Export
@@ -194,6 +200,7 @@ function ToolbarRightContent(props: ToolbarProps) {
 
   return (
     <div className={css(style.toolbarRight)}>
+      {props.activeProfileState && sendToLLM}
       {props.activeProfileState && exportFile}
       {importFile}
       {colorSchemeToggle}
