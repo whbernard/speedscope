@@ -138,6 +138,26 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     [],
   )
 
+  // Reduce frame table to only frames referenced by events and remap event frame indices
+  function compressFramesAndRemap(
+    frames: any[],
+    events: {type: 'O' | 'C'; frame: number; at: number}[],
+  ): {frames: any[]; events: {type: 'O' | 'C'; frame: number; at: number}[]} {
+    const used = new Set<number>()
+    for (const ev of events) used.add(ev.frame)
+    const oldToNew = new Map<number, number>()
+    const newFrames: any[] = []
+    for (const ev of events) {
+      if (!oldToNew.has(ev.frame)) {
+        const newIndex = newFrames.length
+        oldToNew.set(ev.frame, newIndex)
+        newFrames.push(frames[ev.frame])
+      }
+    }
+    const remapped = events.map(ev => ({...ev, frame: oldToNew.get(ev.frame)!}))
+    return {frames: newFrames, events: remapped}
+  }
+
   // Update values when initial values change (for sync functionality)
   useEffect(() => {
     if (props.initialStartValue !== undefined) {
@@ -195,7 +215,12 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
       originalProfile.forEachCall(openFrame, closeFrame)
 
       // Apply advanced filtering algorithm
-      const filteredEvents = filterEventsWithContext(events, startValue, endValue)
+      let filteredEvents = filterEventsWithContext(events, startValue, endValue)
+
+      // Compress frames & remap to only those referenced by filtered events
+      const compressed = compressFramesAndRemap(frames, filteredEvents)
+      const framesSlim = compressed.frames
+      filteredEvents = compressed.events
 
       // Use the actual first and last event timestamps from the filtered events, converted to integers
       const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
@@ -210,7 +235,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
         name: `${props.profile.getName()} (${formatValue(startValue)} - ${formatValue(endValue)})`,
         activeProfileIndex: 0,
         $schema: 'https://www.speedscope.app/file-format-schema.json',
-        shared: {frames},
+        shared: {frames: framesSlim},
         profiles: [
           {
             type: 'evented',
@@ -237,6 +262,97 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
       URL.revokeObjectURL(url)
     } catch (error) {
       alert('Error exporting JSON: ' + (error as Error).message)
+    }
+  }
+
+  // Export current interval as a slimmed down text file
+  const handleExportText = () => {
+    try {
+      // Build frames table and event list for the full profile
+      const frames: any[] = []
+      const indexForFrame = new Map<any, number>()
+      function getIndexForFrame(frame: any): number {
+        let index = indexForFrame.get(frame)
+        if (index == null) {
+          const serializedFrame: any = {name: frame.name}
+          if (frame.file != null) serializedFrame.file = frame.file
+          if (frame.line != null) serializedFrame.line = frame.line
+          if (frame.col != null) serializedFrame.col = frame.col
+          index = frames.length
+          indexForFrame.set(frame, index)
+          frames.push(serializedFrame)
+        }
+        return index
+      }
+
+      const events: {type: 'O' | 'C'; frame: number; at: number}[] = []
+      props.profile.forEachCall(
+        (node, value) =>
+          events.push({type: 'O', frame: getIndexForFrame(node.frame), at: parseInt(value.toString())}),
+        (node, value) =>
+          events.push({type: 'C', frame: getIndexForFrame(node.frame), at: parseInt(value.toString())}),
+      )
+
+      // Filter to interval with synthetic boundaries (reuse logic)
+      let filtered = filterEventsWithContext(events, startValue, endValue)
+      filtered.sort((a, b) => a.at - b.at)
+
+      // Compress frames and remap filtered events
+      const compressed = compressFramesAndRemap(frames, filtered)
+      const framesSlim = compressed.frames
+      filtered = compressed.events
+
+      // Build stack transitions and durations
+      const stack: number[] = []
+      const lines: string[] = []
+
+      // Symbol table
+      lines.push('# symbols')
+      for (let i = 0; i < framesSlim.length; i++) {
+        lines.push(`${i}\t${framesSlim[i].name}`)
+      }
+      lines.push('# frames are referenced by index from left (top) to right (bottom)')
+      lines.push('# stack [ top ... bottom ]\t<duration> (same units as profile)')
+
+      let prevTime = filtered.length > 0 ? filtered[0].at : startValue
+      for (const ev of filtered) {
+        // On transition, emit previous stack with duration
+        const duration = ev.at - prevTime
+        if (duration > 0 && stack.length > 0) {
+          const stackText = `[ ${stack.join(' ')} ]\t${duration}`
+          lines.push(stackText)
+        }
+
+        // Apply event
+        if (ev.type === 'O') {
+          // Push opened frame to top (leftmost)
+          stack.unshift(ev.frame)
+        } else {
+          // Close: remove the first occurrence from top (leftmost first)
+          const idx = stack.indexOf(ev.frame)
+          if (idx >= 0) stack.splice(idx, 1)
+        }
+        prevTime = ev.at
+      }
+
+      // Flush tail up to endValue if needed
+      const tailDuration = endValue - prevTime
+      if (tailDuration > 0 && stack.length > 0) {
+        lines.push(`[ ${stack.join(' ')} ]\t${tailDuration}`)
+      }
+
+      const text = lines.join('\n') + '\n'
+      const blob = new Blob([text], {type: 'text/plain'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `speedscope-interval-${formatValue(startValue)}-to-${formatValue(endValue)}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert('Error exporting text: ' + (error as Error).message)
     }
   }
 
@@ -464,6 +580,9 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
         <div className={css(style.exportSection)}>
           <button className={css(style.exportButton)} onClick={handleExportJson}>
             📁 Export JSON
+          </button>
+          <button className={css(style.exportButton)} onClick={handleExportText} style={{marginLeft: 12}}>
+            📄 Export Text
           </button>
         </div>
 
