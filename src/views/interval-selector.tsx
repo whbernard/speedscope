@@ -4,15 +4,17 @@ import {useState, useEffect, useCallback} from 'preact/hooks'
 import {Profile} from '../lib/profile'
 import {FontFamily, FontSize, Duration} from './style'
 import {Theme, withTheme} from './themes/theme'
+import {DEFAULT_OAUTH_CONFIG, getOAuthConfig, tokenCache} from '../config/api-config'
 
 interface IntervalSelectorProps {
   profile: Profile
   onConfirm: (
     startValue: number,
     endValue: number,
-    oauthConfig?: OAuthConfig,
+    oauthConfig?: any,
     prompt?: string,
     filteredJsonData?: string,
+    llmConfig?: any,
   ) => void
   onCancel: () => void
   theme: Theme
@@ -20,11 +22,6 @@ interface IntervalSelectorProps {
   initialEndValue?: number
 }
 
-interface OAuthConfig {
-  oauthUrl: string
-  clientId: string
-  clientSecret: string
-}
 
 export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const style = getStyle(props.theme)
@@ -39,10 +36,13 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [endValue, setEndValue] = useState(defaultEndValue)
   const [startPercent, setStartPercent] = useState((defaultStartValue / totalWeight) * 100)
   const [endPercent, setEndPercent] = useState((defaultEndValue / totalWeight) * 100)
-  const [oauthUrl, setOauthUrl] = useState('https://your-oauth-server.com/oauth/token')
+  const [oauthUrl, setOauthUrl] = useState(DEFAULT_OAUTH_CONFIG.url)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
+  const [oauthProvider] = useState<keyof typeof import('../config/api-config').OAUTH_PROVIDERS>('generic')
+  const [llmProvider] = useState<keyof typeof import('../config/api-config').LLM_PROVIDERS>('bedrockClaudeSonnet')
   const [selectedPrompt, setSelectedPrompt] = useState('')
+  const [hasCachedToken, setHasCachedToken] = useState(false)
 
   // Sample prompts for LLM analysis
   const samplePrompts = [
@@ -61,6 +61,17 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
       firstInput.focus()
     }
   }, [])
+
+  // Check for cached token when client ID changes
+  useEffect(() => {
+    if (clientId) {
+      const oauthProviderConfig = getOAuthConfig(oauthProvider)
+      const cached = tokenCache.hasValidToken(oauthProviderConfig, clientId)
+      setHasCachedToken(cached)
+    } else {
+      setHasCachedToken(false)
+    }
+  }, [clientId, oauthProvider])
 
   const formatValue = useCallback(
     (value: number) => {
@@ -437,7 +448,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
 
   const handleConfirm = () => {
     if (!oauthUrl || !clientId || !clientSecret) {
-      alert('Please fill in all OAuth fields: OAuth URL, CLIENT_ID, and CLIENT_SECRET')
+      alert('Please fill in all authentication fields: Authentication URL, Client ID, and Client Secret')
       return
     }
 
@@ -448,12 +459,16 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
 
     try {
       const jsonData = generateFilteredJsonData()
-      const oauthConfig: OAuthConfig = {
+      const oauthConfig = {
         oauthUrl,
         clientId,
         clientSecret,
+        provider: oauthProvider,
       }
-      props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, jsonData)
+      const llmConfig = {
+        provider: llmProvider,
+      }
+      props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, jsonData, llmConfig)
     } catch (error) {
       alert('Error preparing data for LLM: ' + (error as Error).message)
     }
@@ -531,10 +546,11 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
             </div>
 
             <div className={css(style.oauthSection)}>
-              <h4>OAuth Configuration</h4>
+              <h4>API Configuration</h4>
+
               <div className={css(style.oauthFields)}>
                 <div className={css(style.fieldGroup)}>
-                  <label className={css(style.label)}>OAuth URL:</label>
+                  <label className={css(style.label)}>Authentication URL:</label>
                   <input
                     type="text"
                     value={oauthUrl}
@@ -543,11 +559,11 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                     onKeyUp={e => e.stopPropagation()}
                     onKeyPress={e => e.stopPropagation()}
                     className={css(style.input)}
-                    placeholder="https://your-oauth-server.com/oauth/token"
+                    placeholder={DEFAULT_OAUTH_CONFIG.url}
                   />
                 </div>
                 <div className={css(style.fieldGroup)}>
-                  <label className={css(style.label)}>CLIENT_ID:</label>
+                  <label className={css(style.label)}>Client ID:</label>
                   <input
                     type="text"
                     value={clientId}
@@ -560,7 +576,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                   />
                 </div>
                 <div className={css(style.fieldGroup)}>
-                  <label className={css(style.label)}>CLIENT_SECRET:</label>
+                  <label className={css(style.label)}>Client Secret:</label>
                   <input
                     type="password"
                     value={clientSecret}
@@ -573,6 +589,13 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                   />
                 </div>
               </div>
+              
+              {hasCachedToken && (
+                <div className={css(style.tokenStatus)}>
+                  <span className={css(style.tokenStatusIcon)}>🔐</span>
+                  <span className={css(style.tokenStatusText)}>Valid token cached - no re-authentication needed</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -725,6 +748,15 @@ const getStyle = withTheme(theme =>
       borderRadius: '4px',
       border: `1px solid ${theme.fgSecondaryColor}`,
     },
+    providerSection: {
+      display: 'flex',
+      gap: '16px',
+      marginBottom: '16px',
+      padding: '12px',
+      background: theme.bgPrimaryColor,
+      borderRadius: '4px',
+      border: `1px solid ${theme.fgSecondaryColor}`,
+    },
     authChoice: {
       display: 'flex',
       gap: '20px',
@@ -769,6 +801,20 @@ const getStyle = withTheme(theme =>
         borderColor: theme.selectionPrimaryColor,
       },
     },
+    select: {
+      padding: '8px 12px',
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      borderRadius: '4px',
+      background: theme.bgPrimaryColor,
+      color: theme.fgPrimaryColor,
+      fontFamily: FontFamily.MONOSPACE,
+      fontSize: FontSize.LABEL,
+      cursor: 'pointer',
+      ':focus': {
+        outline: 'none',
+        borderColor: theme.selectionPrimaryColor,
+      },
+    },
     sideBySideContainer: {
       display: 'flex',
       gap: '20px',
@@ -785,20 +831,6 @@ const getStyle = withTheme(theme =>
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
-    },
-    select: {
-      padding: '8px 12px',
-      border: `1px solid ${theme.fgSecondaryColor}`,
-      borderRadius: '4px',
-      background: theme.bgPrimaryColor,
-      color: theme.fgPrimaryColor,
-      fontFamily: FontFamily.MONOSPACE,
-      fontSize: FontSize.LABEL,
-      cursor: 'pointer',
-      ':focus': {
-        outline: 'none',
-        borderColor: theme.selectionPrimaryColor,
-      },
     },
     exportSection: {
       marginTop: '20px',
@@ -820,6 +852,24 @@ const getStyle = withTheme(theme =>
         background: theme.selectionPrimaryColor,
         color: theme.altFgPrimaryColor,
       },
+    },
+    tokenStatus: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      marginTop: '12px',
+      padding: '8px 12px',
+      background: theme.selectionPrimaryColor,
+      borderRadius: '4px',
+      border: `1px solid ${theme.selectionSecondaryColor}`,
+    },
+    tokenStatusIcon: {
+      fontSize: '16px',
+    },
+    tokenStatusText: {
+      fontSize: FontSize.LABEL,
+      color: theme.altFgPrimaryColor,
+      fontWeight: 'bold',
     },
   }),
 )

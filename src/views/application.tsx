@@ -18,6 +18,7 @@ import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
+import {getOAuthConfig, getLLMConfig, validateOAuthResponse, validateLLMResponse, tokenCache} from '../config/api-config'
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -516,6 +517,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     oauthConfig: any,
     analysisPrompt?: string,
     filteredJsonData?: string,
+    llmConfig?: any,
   ) => {
     this.setState({
       showIntervalSelector: false,
@@ -676,83 +678,97 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         // Get the active profile for formatting values
         const activeProfile = this.props.activeProfileState.profile
 
-        // Get LLM configuration from user
-        const llmEndpoint =
-          prompt('Enter LLM inference URL:', 'https://api.openai.com/v1/chat/completions') ||
-          'https://api.openai.com/v1/chat/completions'
-
+        // Get configurations from the interval selector
+        const oauthProviderConfig = getOAuthConfig(oauthConfig.provider || 'generic')
+        const llmProviderConfig = getLLMConfig(llmConfig?.provider || 'bedrockClaudeSonnet')
+        
+        const llmEndpoint = llmProviderConfig.url
         let authHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
+          'Content-Type': llmProviderConfig.contentType,
         }
 
-        // Use OAuth configuration from interval selector
-        const selectedConfig = {
-          endpoint: oauthConfig.oauthUrl,
-          client_id: oauthConfig.clientId,
-          client_secret: oauthConfig.clientSecret,
-          grant_type: 'client_credentials',
-        }
+        // Check for cached token first
+        let accessToken = tokenCache.getToken(oauthProviderConfig, oauthConfig.clientId)
 
-        try {
-          // Get OAuth token using client credentials flow
-          const oauthResponse = await fetch(selectedConfig.endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              grant_type: selectedConfig.grant_type,
-              client_id: selectedConfig.client_id,
-              client_secret: selectedConfig.client_secret,
-            }).toString(),
-          })
-
-          if (!oauthResponse.ok) {
-            throw new Error(`OAuth failed: ${oauthResponse.status} ${oauthResponse.statusText}`)
+        if (!accessToken) {
+          // Use OAuth configuration from interval selector
+          const selectedConfig = {
+            endpoint: oauthConfig.oauthUrl,
+            client_id: oauthConfig.clientId,
+            client_secret: oauthConfig.clientSecret,
+            grant_type: oauthProviderConfig.grantType,
           }
 
-          const oauthData = await oauthResponse.json()
-          const accessToken = oauthData.access_token
+          try {
+            // Get OAuth token using client credentials flow
+            const oauthResponse = await fetch(selectedConfig.endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': oauthProviderConfig.contentType,
+              },
+              body: new URLSearchParams({
+                grant_type: selectedConfig.grant_type,
+                [oauthProviderConfig.clientIdField]: selectedConfig.client_id,
+                [oauthProviderConfig.clientSecretField]: selectedConfig.client_secret,
+              }).toString(),
+            })
 
-          if (!accessToken) {
-            throw new Error('No access token received from OAuth server')
+            if (!oauthResponse.ok) {
+              throw new Error(`OAuth failed: ${oauthResponse.status} ${oauthResponse.statusText}`)
+            }
+
+            const oauthData = await oauthResponse.json()
+            
+            // Validate OAuth response
+            if (!validateOAuthResponse(oauthData, oauthProviderConfig)) {
+              throw new Error('Invalid OAuth response format')
+            }
+            
+            accessToken = oauthData[oauthProviderConfig.responseSchema.access_token]
+
+            if (!accessToken) {
+              throw new Error('No access token received from OAuth server')
+            }
+
+            // Cache the token for future use
+            tokenCache.setToken(oauthProviderConfig, oauthConfig.clientId, oauthData)
+          } catch (oauthError) {
+            console.error('OAuth error:', oauthError)
+            const errorMessage =
+              oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
+            
+            // Hide loading screen and return to interval selector
+            this.setState({
+              showLoadingScreen: false,
+              showIntervalSelector: true,
+            })
+            
+            alert(
+              `Authentication failed: ${errorMessage}\n\nPlease check your credentials and authentication endpoint.`,
+            )
+            return
           }
-
-          authHeaders['Authorization'] = `Bearer ${accessToken}`
-        } catch (oauthError) {
-          console.error('OAuth error:', oauthError)
-          const errorMessage =
-            oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
-          alert(
-            `OAuth authentication failed: ${errorMessage}\n\nPlease check your OAuth endpoint and credentials.`,
-          )
-          return
         }
+
+        authHeaders['Authorization'] = `Bearer ${accessToken}`
 
         // Use the prompt from the interval selector or default
         const finalPrompt =
           analysisPrompt || 'Identify performance bottlenecks in this profile data'
 
-        // Prepare LLM request payload
+        // Prepare LLM request payload using provider configuration
         const llmPayload = {
-          model: 'gpt-4',
+          ...llmProviderConfig.requestSchema,
           messages: [
             {
-              role: 'system',
-              content:
-                'You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.',
-            },
-            {
               role: 'user',
-              content: `${finalPrompt}\n\nProfile data:\n${jsonData}`,
+              content: `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`,
             },
           ],
-          max_tokens: 2000,
-          temperature: 0.3,
         }
 
-        // Send to LLM API
-        this.setState({loadingMessage: 'Sending to LLM API...'})
+        // Send to API
+        this.setState({loadingMessage: 'Sending to API...'})
         const response = await fetch(llmEndpoint, {
           method: 'POST',
           headers: authHeaders,
@@ -761,28 +777,40 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
 
         if (response.ok) {
           const responseData = await response.json()
-          const llmResponse = responseData.choices?.[0]?.message?.content || 'No analysis received'
+          
+          // Validate LLM response
+          if (!validateLLMResponse(responseData, llmProviderConfig)) {
+            throw new Error('Invalid LLM response format')
+          }
+          
+          const llmResponse = responseData.content?.[0]?.text || 'No analysis received'
 
           // Hide loading screen
           this.setState({showLoadingScreen: false})
 
-          // Show LLM analysis in a more detailed alert
+          // Show API analysis in a more detailed alert
           alert(
-            `LLM Analysis for interval ${activeProfile.formatValue(
+            `API Analysis for interval ${activeProfile.formatValue(
               startValue,
             )} - ${activeProfile.formatValue(endValue)}:\n\n${llmResponse}`,
           )
         } else {
-          // Hide loading screen
-          this.setState({showLoadingScreen: false})
+          // Hide loading screen and return to interval selector
+          this.setState({
+            showLoadingScreen: false,
+            showIntervalSelector: true,
+          })
 
           alert(
-            `Failed to get LLM analysis: ${response.status} ${response.statusText}\n\nPlease check your authentication and endpoint configuration.`,
+            `Failed to get API analysis: ${response.status} ${response.statusText}\n\nPlease check your credentials and endpoint configuration.`,
           )
         }
       } catch (error) {
-        // Hide loading screen
-        this.setState({showLoadingScreen: false})
+        // Hide loading screen and return to interval selector
+        this.setState({
+          showLoadingScreen: false,
+          showIntervalSelector: true,
+        })
 
         console.error('Error getting LLM analysis:', error)
         alert(
