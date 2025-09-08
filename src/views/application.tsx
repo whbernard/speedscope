@@ -928,7 +928,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
       <div className={css(style.landingContainer)}>
         <div className={css(style.landingMessage)}>
           <p className={css(style.landingP)}>
-            👋 Hi there! Welcome to 🔬speedscope, an interactive{' '}
+            👋 Hi there! Welcome to 🔬Speedscope with LLM, an interactive{' '}
             <a
               className={css(style.link)}
               href="http://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html"
@@ -936,6 +936,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
               flamegraph
             </a>{' '}
             visualizer. Use it to help you make your software faster.
+          </p>
+          <p className={css(style.landingP)}>
+            You can also analyze any selected time interval with an LLM. Click
+            {' '}<strong>🤖 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
+            {' '}OAuth client credentials or an API key, and send the serialized profile data to
+            your configured LLM endpoint for insights and recommendations.
           </p>
           {canUseXHR ? (
             <p className={css(style.landingP)}>
