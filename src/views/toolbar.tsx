@@ -154,7 +154,7 @@ function ToolbarCenterContent(props: ToolbarProps): JSX.Element {
       )
     }
   }
-  return <Fragment>{'🔬speedscope'}</Fragment>
+  return <Fragment>{'🔬Speedscope with LLM'}</Fragment>
 }
 
 function ToolbarRightContent(props: ToolbarProps) {

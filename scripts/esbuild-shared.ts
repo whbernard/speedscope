@@ -81,7 +81,7 @@ export const generateIndexHtml = ({
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>speedscope</title>
+    <title>Speedscope with LLM</title>
     <link rel="stylesheet" href="${path.basename(mainChunk.cssBundle!)}">
     <link rel="icon" type="image/png" sizes="32x32" href="${favicon32x32Path}">
     <link rel="icon" type="image/png" sizes="16x16" href="${favicon16x16Path}">

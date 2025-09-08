@@ -1,4 +1,4 @@
-# 🔬speedscope 
+# 🔬Speedscope with LLM 
 A fast, interactive web-based viewer for performance profiles. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more). Try it here: https://www.speedscope.app
 
 Given raw profiling data, speedscope allows you to interactively explore the data to get insight into what's slow in your application, or allocating all the memory, or whatever data is represented in the profiling data.

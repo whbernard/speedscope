@@ -232,7 +232,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         name: this.props.hashParams.title,
       }
     }
-    document.title = `${profileGroup.name} - speedscope`
+    document.title = `${profileGroup.name} - Speedscope with LLM`
 
     if (this.props.hashParams.viewMode) {
       this.props.setViewMode(this.props.hashParams.viewMode)
