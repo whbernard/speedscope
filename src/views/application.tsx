@@ -25,6 +25,8 @@ import {
   validateLLMResponse,
   tokenCache,
 } from '../config/api-config'
+import {OAuthService} from '../services/oauth-service'
+import {LLMService} from '../services/llm-service'
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -695,67 +697,39 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           'Content-Type': llmProviderConfig.contentType,
         }
 
-        // Check for cached token first
-        let accessToken = tokenCache.getToken(oauthProviderConfig, oauthConfig.clientId)
-
-        if (!accessToken) {
-          // Use OAuth configuration from interval selector
-          const selectedConfig = {
-            endpoint: oauthConfig.oauthUrl,
-            client_id: oauthConfig.clientId,
-            client_secret: oauthConfig.clientSecret,
-            grant_type: oauthProviderConfig.grantType,
+        // Use OAuthService to get access token
+        let accessToken: string
+        try {
+          const oauthService = new OAuthService(
+            {
+              endpoint: oauthConfig.oauthUrl,
+              client_id: oauthConfig.clientId,
+              client_secret: oauthConfig.clientSecret,
+              grant_type: oauthProviderConfig.grantType,
+            },
+            oauthProviderConfig
+          )
+          
+          accessToken = await oauthService.getAccessToken()
+          
+          if (!accessToken) {
+            throw new Error('No access token received from OAuth server')
           }
+        } catch (oauthError) {
+          console.error('OAuth error:', oauthError)
+          const errorMessage =
+            oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
 
-          try {
-            // Get OAuth token using client credentials flow
-            const oauthResponse = await fetch(selectedConfig.endpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': oauthProviderConfig.contentType,
-              },
-              body: new URLSearchParams({
-                grant_type: selectedConfig.grant_type,
-                [oauthProviderConfig.clientIdField]: selectedConfig.client_id,
-                [oauthProviderConfig.clientSecretField]: selectedConfig.client_secret,
-              }).toString(),
-            })
+          // Hide loading screen and return to interval selector
+          this.setState({
+            showLoadingScreen: false,
+            showIntervalSelector: true,
+          })
 
-            if (!oauthResponse.ok) {
-              throw new Error(`OAuth failed: ${oauthResponse.status} ${oauthResponse.statusText}`)
-            }
-
-            const oauthData = await oauthResponse.json()
-
-            // Validate OAuth response
-            if (!validateOAuthResponse(oauthData, oauthProviderConfig)) {
-              throw new Error('Invalid OAuth response format')
-            }
-
-            accessToken = oauthData[oauthProviderConfig.responseSchema.access_token]
-
-            if (!accessToken) {
-              throw new Error('No access token received from OAuth server')
-            }
-
-            // Cache the token for future use
-            tokenCache.setToken(oauthProviderConfig, oauthConfig.clientId, oauthData)
-          } catch (oauthError) {
-            console.error('OAuth error:', oauthError)
-            const errorMessage =
-              oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
-
-            // Hide loading screen and return to interval selector
-            this.setState({
-              showLoadingScreen: false,
-              showIntervalSelector: true,
-            })
-
-            alert(
-              `Authentication failed: ${errorMessage}\n\nPlease check your credentials and authentication endpoint.`,
-            )
-            return
-          }
+          alert(
+            `Authentication failed: ${errorMessage}\n\nPlease check your credentials and authentication endpoint.`,
+          )
+          return
         }
 
         authHeaders['Authorization'] = `Bearer ${accessToken}`
@@ -764,34 +738,21 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         const finalPrompt =
           analysisPrompt || 'Identify performance bottlenecks in this profile data'
 
-        // Prepare LLM request payload using provider configuration
-        const llmPayload = {
-          ...llmProviderConfig.requestSchema,
-          messages: [
-            {
-              role: 'user',
-              content: `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`,
-            },
-          ],
-        }
-
-        // Send to API
+        // Use LLMService to send prompt
         this.setState({loadingMessage: 'Sending to API...'})
-        const response = await fetch(llmEndpoint, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify(llmPayload),
-        })
+        
+        try {
+          const llmService = new LLMService({
+            endpoint: llmEndpoint,
+            provider: llmConfig.provider,
+            requestSchema: llmProviderConfig.requestSchema,
+            responseSchema: llmProviderConfig.responseSchema,
+            contentType: llmProviderConfig.contentType,
+          })
 
-        if (response.ok) {
-          const responseData = await response.json()
-
-          // Validate LLM response
-          if (!validateLLMResponse(responseData, llmProviderConfig)) {
-            throw new Error('Invalid LLM response format')
-          }
-
-          const llmResponse = responseData.content?.[0]?.text || 'No analysis received'
+          const prompt = `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`
+          
+          const llmResponse = await llmService.sendPrompt(prompt, jsonData, accessToken)
 
           // Hide loading screen
           this.setState({showLoadingScreen: false})
@@ -802,7 +763,11 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
               startValue,
             )} - ${activeProfile.formatValue(endValue)}:\n\n${llmResponse}`,
           )
-        } else {
+        } catch (llmError) {
+          console.error('LLM error:', llmError)
+          const errorMessage =
+            llmError instanceof Error ? llmError.message : 'Unknown LLM error'
+
           // Hide loading screen and return to interval selector
           this.setState({
             showLoadingScreen: false,
@@ -810,7 +775,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           })
 
           alert(
-            `Failed to get API analysis: ${response.status} ${response.statusText}\n\nPlease check your credentials and endpoint configuration.`,
+            `Failed to get API analysis: ${errorMessage}\n\nPlease check your credentials and endpoint configuration.`,
           )
         }
       } catch (error) {
