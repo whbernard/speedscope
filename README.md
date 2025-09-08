@@ -1,80 +1,97 @@
 # 🔬Speedscope with LLM 
 A fast, interactive web-based viewer for performance profiles with **AI-powered analysis**. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more).
 
+## ⚡ TL;DR
+```bash
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && npm install && npm run dev
+```
+Open `http://localhost:8000` - Done! 🎉
+
+## 🚀 Getting Started
+
+**Web Version (Fastest):**
+```bash
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install && npm run dev
+```
+Open `http://localhost:8000`
+
+**Native Desktop (OS Keychain):**
+```bash
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install && npm run tauri:dev
+```
+
 ## 🧠 LLM Integration Features
 - **Send to LLM**: Analyze profiling data with AI models
 - **OAuth Authentication**: Secure integration with LLM providers
+- **OS Keychain Storage**: Tokens securely stored in OS keychain (desktop version)
 - **Custom Prompts**: Ask specific questions about your performance data
 - **Real-time Analysis**: Get instant insights from your profiling data
 
 Given raw profiling data, speedscope allows you to interactively explore the data to get insight into what's slow in your application, or allocating all the memory, or whatever data is represented in the profiling data. The LLM integration takes this a step further by providing AI-powered analysis and recommendations.
 
-## Quick start: build and run (macOS, Windows, Linux)
+## Quick Start
 
-This repository provides both web and native desktop versions using Tauri.
+### 🚀 One-Command Setup (Web Version)
+```bash
+npm install && npm run dev
+```
+Then open `http://localhost:8000` in your browser.
 
-### Prerequisites
-1. **Node.js LTS (24+ recommended)**
-2. **Rust** (for native desktop builds):
-   - Install from [rustup.rs](https://rustup.rs/)
-   - Required for Tauri native desktop applications
+### 🖥️ One-Command Setup (Native Desktop)
+```bash
+npm install && npm run tauri:dev
+```
+This opens the native desktop application with OS keychain integration.
 
-### Web Development Mode
-1. Install dependencies: `npm install`
-2. Start development server: `npm run dev`
-3. Open `http://localhost:8000` in your browser
-4. The server will automatically reload when you make changes
-
-### Native Desktop Development Mode
-1. Install dependencies: `npm install`
-2. Start Tauri development: `npm run tauri:dev`
-3. This will open the native desktop application
-4. Changes will automatically reload in the desktop app
-
-### Production Builds
+### 📦 Production Builds
 
 #### Web Build
-1. Build static site: `npm run build`
-2. This creates optimized files in the `build/` directory
-3. Serve the built files with any static HTTP server:
-   - `npx serve build` (serves on port 3000 by default)
-   - `npx serve build --listen 8080` (custom port)
-   - Or deploy the `build/` directory to any web server
+```bash
+npm run build
+```
+Creates optimized files in `build/` directory. Serve with `npx serve build`.
 
 #### Native Desktop Build
-1. Build native desktop app: `npm run tauri:build`
-2. This creates platform-specific installers in `src-tauri/target/release/bundle/`:
-   - **Windows**: `.msi` installer
-   - **macOS**: `.dmg` disk image and `.app` bundle
-   - **Linux**: `.deb`, `.rpm`, and `.AppImage` packages
+```bash
+npm run tauri:build
+```
+Creates platform-specific installers in `src-tauri/target/release/bundle/`:
+- **Windows**: `.msi` installer
+- **macOS**: `.dmg` disk image and `.app` bundle  
+- **Linux**: `.deb`, `.rpm`, and `.AppImage` packages
 
-### Platform-Specific Notes
+### Prerequisites
 
-#### Windows
-- Requires Visual Studio Build Tools or Visual Studio Community
-- Install Rust via rustup.rs
-- Run `npm run tauri:build` to create `.msi` installer
+**For Web Version:**
+- Node.js LTS (24+ recommended)
 
-#### macOS
-- Requires Xcode Command Line Tools: `xcode-select --install`
-- Install Rust via rustup.rs
-- Run `npm run tauri:build` to create `.dmg` and `.app` bundle
+**For Native Desktop Version:**
+- Node.js LTS (24+ recommended)
+- Rust (install from [rustup.rs](https://rustup.rs/))
 
-#### Linux
-- Install system dependencies:
-  ```bash
-  # Ubuntu/Debian
-  sudo apt update
-  sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+**Platform-Specific Requirements:**
 
-  # Fedora
-  sudo dnf install webkit2gtk3-devel openssl-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+**Windows:**
+- Visual Studio Build Tools or Visual Studio Community
 
-  # Arch Linux
-  sudo pacman -S webkit2gtk openssl gtk3 libappindicator-gtk3 librsvg
-  ```
-- Install Rust via rustup.rs
-- Run `npm run tauri:build` to create `.deb`, `.rpm`, and `.AppImage` packages
+**macOS:**
+- Xcode Command Line Tools: `xcode-select --install`
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+# Fedora  
+sudo dnf install webkit2gtk3-devel openssl-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+
+# Arch Linux
+sudo pacman -S webkit2gtk openssl gtk3 libappindicator-gtk3 librsvg
+```
 
 ### CLI Usage (Optional)
 1. Install globally: `npm install -g speedscope`
