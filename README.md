@@ -1,9 +1,13 @@
 # 🔬Speedscope with LLM 
-A fast, interactive web-based viewer for performance profiles. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more). Try it here: https://www.speedscope.app
+A fast, interactive web-based viewer for performance profiles with **AI-powered analysis**. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more).
 
-Given raw profiling data, speedscope allows you to interactively explore the data to get insight into what's slow in your application, or allocating all the memory, or whatever data is represented in the profiling data.
+## 🧠 LLM Integration Features
+- **Send to LLM**: Analyze profiling data with AI models
+- **OAuth Authentication**: Secure integration with LLM providers
+- **Custom Prompts**: Ask specific questions about your performance data
+- **Real-time Analysis**: Get instant insights from your profiling data
 
-![Example Profile](https://user-images.githubusercontent.com/150329/40900669-86eced80-6781-11e8-92c1-dc667b651e72.gif)
+Given raw profiling data, speedscope allows you to interactively explore the data to get insight into what's slow in your application, or allocating all the memory, or whatever data is represented in the profiling data. The LLM integration takes this a step further by providing AI-powered analysis and recommendations.
 
 ## Quick start: build and run (macOS, Windows, Linux)
 
