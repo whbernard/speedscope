@@ -9,21 +9,26 @@ Given raw profiling data, speedscope allows you to interactively explore the dat
 
 This repository runs purely in the browser. No native code is required.
 
-- macOS / Windows / Linux
-  1. Install Node.js LTS (18+ recommended)
-  2. Install dependencies: `npm install`
-  3. Start dev server: `npm run dev`
-  4. Open `http://localhost:8000` (or the printed URL)
+### Development Mode
+1. Install Node.js LTS (24+ recommended)
+2. Install dependencies: `npm install`
+3. Start dev server: `npm run dev`
+4. Open `http://localhost:8000` in your browser
+5. The server will automatically reload when you make changes
 
-- Build static site
-  - `npm run build` → outputs static files to `build/`
-  - Serve `build/` with any static HTTP server (e.g. `npx serve build`)
+### Production Build
+1. Build static site: `npm run build`
+2. This creates optimized files in the `build/` directory
+3. Serve the built files with any static HTTP server:
+   - `npx serve build` (serves on port 3000 by default)
+   - `npx serve build --listen 8080` (custom port)
+   - Or deploy the `build/` directory to any web server
 
-- CLI usage (optional)
-  - `npm install -g speedscope`
-  - `speedscope /path/to/profile` opens the browser viewer
+### CLI Usage (Optional)
+1. Install globally: `npm install -g speedscope`
+2. Open profile in browser: `speedscope /path/to/profile`
 
-### Supported browsers
+### Supported Browsers
 - Latest Chrome and Firefox (see `browserslist` in `package.json`)
 
 ---
