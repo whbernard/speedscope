@@ -939,7 +939,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           </p>
           <p className={css(style.landingP)}>
             You can also analyze any selected time interval with an LLM. Click
-            {' '}<strong>🤖 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
+            {' '}<strong>🧠 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
             {' '}OAuth client credentials or an API key, and send the serialized profile data to
             your configured LLM endpoint for insights and recommendations.
           </p>
