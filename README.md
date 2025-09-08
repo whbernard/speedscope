@@ -89,14 +89,13 @@ grant_type=client_credentials&client_id=<id>&client_secret=<secret>
 2. Zoom/pan the timeline to the interval you want analyzed.
 3. Click “Send to LLM” in the toolbar.
 4. Configure authentication:
-   - OAuth (enter OAuth URL, Client ID, Client Secret), or
-   - API key header based on your provider’s requirements
+   - OAuth (enter OAuth URL, Client ID, Client Secret)
 5. Choose a prompt (or write your own) and submit.
 6. The app serializes the selected interval to JSON and sends it to the LLM endpoint defined in `DEFAULT_LLM_CONFIG` (or your selected provider). The response text is shown in the UI.
 
 Troubleshooting tips:
 - Check the browser console Network tab if you get errors
-- Verify OAuth endpoint and credentials
+- Verify OAuth endpoint and credentials (Client ID, Client Secret)
 - Verify your LLM endpoint URL and request schema
 
 [0]: https://en.wikipedia.org/wiki/Profiling_(computer_programming)#Statistical_profilers
