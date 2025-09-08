@@ -18,7 +18,13 @@ import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
-import {getOAuthConfig, getLLMConfig, validateOAuthResponse, validateLLMResponse, tokenCache} from '../config/api-config'
+import {
+  getOAuthConfig,
+  getLLMConfig,
+  validateOAuthResponse,
+  validateLLMResponse,
+  tokenCache,
+} from '../config/api-config'
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -426,6 +432,8 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     }
   }
 
+  // Removed .NET profiling and native file access
+
   private getCurrentViewState() {
     if (!this.props.activeProfileState) return null
 
@@ -681,7 +689,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         // Get configurations from the interval selector
         const oauthProviderConfig = getOAuthConfig(oauthConfig.provider || 'generic')
         const llmProviderConfig = getLLMConfig(llmConfig?.provider || 'bedrockClaudeSonnet')
-        
+
         const llmEndpoint = llmProviderConfig.url
         let authHeaders: Record<string, string> = {
           'Content-Type': llmProviderConfig.contentType,
@@ -718,12 +726,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             }
 
             const oauthData = await oauthResponse.json()
-            
+
             // Validate OAuth response
             if (!validateOAuthResponse(oauthData, oauthProviderConfig)) {
               throw new Error('Invalid OAuth response format')
             }
-            
+
             accessToken = oauthData[oauthProviderConfig.responseSchema.access_token]
 
             if (!accessToken) {
@@ -736,13 +744,13 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             console.error('OAuth error:', oauthError)
             const errorMessage =
               oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
-            
+
             // Hide loading screen and return to interval selector
             this.setState({
               showLoadingScreen: false,
               showIntervalSelector: true,
             })
-            
+
             alert(
               `Authentication failed: ${errorMessage}\n\nPlease check your credentials and authentication endpoint.`,
             )
@@ -777,12 +785,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
 
         if (response.ok) {
           const responseData = await response.json()
-          
+
           // Validate LLM response
           if (!validateLLMResponse(responseData, llmProviderConfig)) {
             throw new Error('Invalid LLM response format')
           }
-          
+
           const llmResponse = responseData.content?.[0]?.text || 'No analysis received'
 
           // Hide loading screen

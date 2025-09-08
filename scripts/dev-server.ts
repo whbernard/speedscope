@@ -28,6 +28,7 @@ async function main() {
 
   let {host, port} = await ctx.serve({
     servedir: outdir,
+    port: 8000,
   })
 
   console.log(`Server is running at http://${host}:${port}`)

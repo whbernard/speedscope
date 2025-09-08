@@ -215,7 +215,9 @@ describe('Interval Selector Export Logic', () => {
       const events = exportedData.profiles[0].events
 
       // Should have synthetic events at the boundaries
-      const hasSyntheticBoundary = events.some((e: any) => (e.at === 150 && e.type === 'O') || (e.at === 650 && e.type === 'C'))
+      const hasSyntheticBoundary = events.some(
+        (e: any) => (e.at === 150 && e.type === 'O') || (e.at === 650 && e.type === 'C'),
+      )
       expect(hasSyntheticBoundary).toBe(true)
     })
 

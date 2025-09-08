@@ -22,7 +22,6 @@ interface IntervalSelectorProps {
   initialEndValue?: number
 }
 
-
 export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const style = getStyle(props.theme)
   const totalWeight = props.profile.getTotalWeight()
@@ -39,8 +38,10 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [oauthUrl, setOauthUrl] = useState(DEFAULT_OAUTH_CONFIG.url)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
-  const [oauthProvider] = useState<keyof typeof import('../config/api-config').OAUTH_PROVIDERS>('generic')
-  const [llmProvider] = useState<keyof typeof import('../config/api-config').LLM_PROVIDERS>('bedrockClaudeSonnet')
+  const [oauthProvider] =
+    useState<keyof typeof import('../config/api-config').OAUTH_PROVIDERS>('generic')
+  const [llmProvider] =
+    useState<keyof typeof import('../config/api-config').LLM_PROVIDERS>('bedrockClaudeSonnet')
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [hasCachedToken, setHasCachedToken] = useState(false)
 
@@ -299,9 +300,17 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
       const events: {type: 'O' | 'C'; frame: number; at: number}[] = []
       props.profile.forEachCall(
         (node, value) =>
-          events.push({type: 'O', frame: getIndexForFrame(node.frame), at: parseInt(value.toString())}),
+          events.push({
+            type: 'O',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
         (node, value) =>
-          events.push({type: 'C', frame: getIndexForFrame(node.frame), at: parseInt(value.toString())}),
+          events.push({
+            type: 'C',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
       )
 
       // Filter to interval with synthetic boundaries (reuse logic)
@@ -448,7 +457,9 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
 
   const handleConfirm = () => {
     if (!oauthUrl || !clientId || !clientSecret) {
-      alert('Please fill in all authentication fields: Authentication URL, Client ID, and Client Secret')
+      alert(
+        'Please fill in all authentication fields: Authentication URL, Client ID, and Client Secret',
+      )
       return
     }
 
@@ -589,11 +600,13 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                   />
                 </div>
               </div>
-              
+
               {hasCachedToken && (
                 <div className={css(style.tokenStatus)}>
                   <span className={css(style.tokenStatusIcon)}>🔐</span>
-                  <span className={css(style.tokenStatusText)}>Valid token cached - no re-authentication needed</span>
+                  <span className={css(style.tokenStatusText)}>
+                    Valid token cached - no re-authentication needed
+                  </span>
                 </div>
               )}
             </div>
@@ -604,7 +617,11 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
           <button className={css(style.exportButton)} onClick={handleExportJson}>
             📁 Export JSON
           </button>
-          <button className={css(style.exportButton)} onClick={handleExportText} style={{marginLeft: 12}}>
+          <button
+            className={css(style.exportButton)}
+            onClick={handleExportText}
+            style={{marginLeft: 12}}
+          >
             📄 Export Text
           </button>
         </div>

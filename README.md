@@ -6,6 +6,100 @@ Given raw profiling data, speedscope allows you to interactively explore the dat
 
 ![Example Profile](https://user-images.githubusercontent.com/150329/40900669-86eced80-6781-11e8-92c1-dc667b651e72.gif)
 
+## Quick start: build and run (macOS, Windows, Linux)
+
+This repository runs purely in the browser. No native code is required.
+
+- macOS / Windows / Linux
+  1. Install Node.js LTS (18+ recommended)
+  2. Install dependencies: `npm install`
+  3. Start dev server: `npm run dev`
+  4. Open `http://localhost:8000` (or the printed URL)
+
+- Build static site
+  - `npm run build` → outputs static files to `build/`
+  - Serve `build/` with any static HTTP server (e.g. `npx serve build`)
+
+- CLI usage (optional)
+  - `npm install -g speedscope`
+  - `speedscope /path/to/profile` opens the browser viewer
+
+### Supported browsers
+- Latest Chrome and Firefox (see `browserslist` in `package.json`)
+
+---
+
+## LLM integration: request schema and configuration
+
+The “Send to LLM” feature is configured in `src/config/api-config.ts`.
+
+- Edit `DEFAULT_LLM_CONFIG` to change:
+  - `url`: LLM endpoint URL
+  - `defaultModel`: default model identifier
+  - `contentType`: request content type
+  - `requestSchema`: JSON payload template merged into the outbound request
+  - `responseSchema`: structure used to extract the model’s response
+
+- Add providers
+  - Extend `LLM_PROVIDERS` with a new key whose value mirrors `DEFAULT_LLM_CONFIG`
+  - Select the provider from the UI or via the code path that calls `getLLMConfig()`
+
+Minimal example (pseudocode) of the JSON payload structure used when sending to the LLM:
+
+```json
+{
+  "model": "your-model-id",
+  "messages": [
+    { "role": "user", "content": "<analysis prompt and serialized profile data>" }
+  ]
+}
+```
+
+The actual shape is defined in `requestSchema` and then combined with the current prompt and the serialized profile JSON at runtime.
+
+---
+
+## OAuth configuration: token request schema
+
+OAuth support uses the client credentials grant flow. Configuration lives in `src/config/api-config.ts`.
+
+- Edit `OAUTH_PROVIDERS.generic` to change:
+  - `contentType`: usually `application/x-www-form-urlencoded`
+  - `clientIdField` / `clientSecretField`: field names expected by your server
+  - `grantType`: typically `client_credentials`
+  - `responseSchema`: where to read `access_token` and `expires_in`
+
+- Runtime configuration
+  - From the UI, specify: OAuth URL, Client ID, Client Secret
+  - Tokens are cached in-memory for the session (see `tokenCache`)
+
+Example token request the app issues:
+
+```
+POST <oauth_url>
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=<id>&client_secret=<secret>
+```
+
+---
+
+## How to send profiling data to the LLM
+
+1. Load a profile via drag-and-drop or the Import/Browse button.
+2. Zoom/pan the timeline to the interval you want analyzed.
+3. Click “Send to LLM” in the toolbar.
+4. Configure authentication:
+   - OAuth (enter OAuth URL, Client ID, Client Secret), or
+   - API key header based on your provider’s requirements
+5. Choose a prompt (or write your own) and submit.
+6. The app serializes the selected interval to JSON and sends it to the LLM endpoint defined in `DEFAULT_LLM_CONFIG` (or your selected provider). The response text is shown in the UI.
+
+Troubleshooting tips:
+- Check the browser console Network tab if you get errors
+- Verify OAuth endpoint and credentials
+- Verify your LLM endpoint URL and request schema
+
 [0]: https://en.wikipedia.org/wiki/Profiling_(computer_programming)#Statistical_profilers
 [1]: https://github.com/brendangregg/FlameGraph
 

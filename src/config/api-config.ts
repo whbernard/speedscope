@@ -1,6 +1,6 @@
 /**
  * API Configuration for OAuth and LLM Integration
- * 
+ *
  * This file contains the configuration for external API integrations
  * including OAuth authentication and LLM service endpoints.
  */
@@ -78,8 +78,8 @@ export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
     access_token: 'string',
     token_type: 'Bearer',
     expires_in: 3600,
-    scope: 'read write'
-  }
+    scope: 'read write',
+  },
 }
 
 /**
@@ -87,8 +87,12 @@ export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
  * Runtime-configurable model endpoint
  */
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
-  url: (typeof process !== 'undefined' && process.env?.LLM_ENDPOINT) || 'https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke',
-  defaultModel: (typeof process !== 'undefined' && process.env?.LLM_MODEL) || 'anthropic.claude-3-sonnet-20240229-v1:0',
+  url:
+    (typeof process !== 'undefined' && process.env?.LLM_ENDPOINT) ||
+    'https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke',
+  defaultModel:
+    (typeof process !== 'undefined' && process.env?.LLM_MODEL) ||
+    'anthropic.claude-3-sonnet-20240229-v1:0',
   contentType: 'application/json',
   requestSchema: {
     anthropic_version: 'bedrock-2023-05-31',
@@ -96,13 +100,14 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
     messages: [
       {
         role: 'user',
-        content: 'You are a performance analysis expert. Analyze the provided profiling data and provide actionable insights.'
-      }
+        content:
+          'You are a performance analysis expert. Analyze the provided profiling data and provide actionable insights.',
+      },
     ],
     temperature: 0.7,
     top_p: 1,
     top_k: 250,
-    stop_sequences: []
+    stop_sequences: [],
   },
   responseSchema: {
     id: 'msg_123',
@@ -111,17 +116,17 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
     content: [
       {
         type: 'text',
-        text: 'Analysis results...'
-      }
+        text: 'Analysis results...',
+      },
     ],
     model: 'anthropic.claude-3-sonnet-20240229-v1:0',
     stop_reason: 'end_turn',
     stop_sequence: null,
     usage: {
       input_tokens: 100,
-      output_tokens: 200
-    }
-  }
+      output_tokens: 200,
+    },
+  },
 }
 
 /**
@@ -129,24 +134,24 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
  */
 export const OAUTH_PROVIDERS = {
   /** Generic OAuth 2.0 provider */
-  generic: DEFAULT_OAUTH_CONFIG
+  generic: DEFAULT_OAUTH_CONFIG,
 } as const
 
 /**
  * Runtime-configurable LLM providers
  * Model selection is handled through environment variables:
- * 
+ *
  * Environment Variables:
  * - LLM_ENDPOINT: Override the default model endpoint URL
  * - LLM_MODEL: Override the default model name
- * 
+ *
  * Example:
  * LLM_ENDPOINT=https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-haiku-20240307-v1:0/invoke
  * LLM_MODEL=anthropic.claude-3-haiku-20240307-v1:0
  */
 export const LLM_PROVIDERS = {
   /** Default runtime-configured model */
-  bedrockClaudeSonnet: DEFAULT_LLM_CONFIG
+  bedrockClaudeSonnet: DEFAULT_LLM_CONFIG,
 } as const
 
 /**
@@ -159,7 +164,9 @@ export function getOAuthConfig(provider: keyof typeof OAUTH_PROVIDERS = 'generic
 /**
  * Get LLM configuration by provider name
  */
-export function getLLMConfig(provider: keyof typeof LLM_PROVIDERS = 'bedrockClaudeSonnet'): LLMConfig {
+export function getLLMConfig(
+  provider: keyof typeof LLM_PROVIDERS = 'bedrockClaudeSonnet',
+): LLMConfig {
   return LLM_PROVIDERS[provider]
 }
 
@@ -212,7 +219,7 @@ class TokenCache {
     let hash = 0
     for (let i = 0; i < key.length; i++) {
       const char = key.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32-bit integer
     }
     return `${this.CACHE_KEY_PREFIX}${Math.abs(hash).toString(36)}`
@@ -223,13 +230,13 @@ class TokenCache {
    */
   setToken(config: OAuthConfig, clientId: string, tokenResponse: any): void {
     const expiresIn = tokenResponse.expires_in || 3600
-    const expiresAt = Date.now() + (expiresIn * 1000)
-    
+    const expiresAt = Date.now() + expiresIn * 1000
+
     const cachedToken: CachedToken = {
       access_token: tokenResponse.access_token,
       token_type: tokenResponse.token_type || 'Bearer',
       expires_at: expiresAt,
-      scope: tokenResponse.scope
+      scope: tokenResponse.scope,
     }
 
     const cacheKey = this.getCacheKey(config, clientId)
