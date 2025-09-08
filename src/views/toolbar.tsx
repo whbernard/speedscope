@@ -163,7 +163,7 @@ function ToolbarRightContent(props: ToolbarProps) {
 
   const sendToLLM = (
     <div className={css(style.toolbarTab)} onClick={props.sendToAPI}>
-      <span className={css(style.emoji)}>🤖</span>Send to LLM
+      <span className={css(style.emoji)}>🧠</span>Send to LLM
     </div>
   )
   const exportFile = (
