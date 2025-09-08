@@ -938,7 +938,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             visualizer with <strong>🧠 AI-powered analysis</strong>. Use it to help you make your software faster.
           </p>
           <p className={css(style.landingP)}>
-            <strong>🧠 LLM Integration:</strong> Analyze any selected time interval with AI models. Click
+            <strong>LLM Integration:</strong> Analyze any selected time interval with AI models. Click
             {' '}<strong>🧠 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
             {' '}OAuth client credentials, and send the serialized profile data to
             your configured LLM endpoint for insights and recommendations.
