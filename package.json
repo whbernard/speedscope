@@ -18,7 +18,10 @@
     "test": "./scripts/ci.sh",
     "serve": "tsx scripts/dev-server.ts",
     "dev": "tsx scripts/dev-server.ts",
-    "build": "tsx scripts/build-release.ts --outdir build --protocol file"
+    "build": "tsx scripts/build-release.ts --outdir build --protocol file",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "files": [
     "bin/cli.mjs",
@@ -32,6 +35,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@tauri-apps/cli": "^2.8.4",
     "@types/jest": "22.2.3",
     "@types/jszip": "3.1.4",
     "@types/node": "14.0.1",
@@ -80,6 +84,7 @@
     ]
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
     "open": "10.1.0"
   }
 }

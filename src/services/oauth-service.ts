@@ -1,4 +1,5 @@
 import {getOAuthUrl} from '../config/api-config'
+import {invoke} from '@tauri-apps/api/core'
 
 export type OAuthProviderKey = 'generic'
 
@@ -16,52 +17,39 @@ export interface OAuthToken {
   raw: any
 }
 
-/**
- * Simple in-memory token cache
- */
-class TokenCache {
-  private cache: Map<string, {token: string, expiresAt: number}> = new Map()
-
-  setToken(clientId: string, token: string, expiresIn: number): void {
-    const expiresAt = Date.now() + expiresIn * 1000
-    this.cache.set(clientId, {token, expiresAt})
-  }
-
-  getToken(clientId: string): string | null {
-    const cached = this.cache.get(clientId)
-    if (!cached) return null
-    
-    if (Date.now() >= cached.expiresAt) {
-      this.cache.delete(clientId)
-      return null
-    }
-    
-    return cached.token
-  }
-
-  clearToken(clientId: string): void {
-    this.cache.delete(clientId)
-  }
+interface TauriOAuthToken {
+  access_token: string
+  token_type: string
+  expires_in?: number
+  scope?: string
+  expires_at?: number
 }
 
-const tokenCache = new TokenCache()
-
 /**
- * OAuthService performs OAuth 2.0 Client Credentials grant and caches tokens
+ * OAuthService performs OAuth 2.0 Client Credentials grant and stores tokens in OS keychain
  */
 export class OAuthService {
   /**
-   * Acquire a bearer token, using in-memory cache when valid
+   * Acquire a bearer token, using OS keychain when valid
    */
   static async getToken(creds: OAuthCredentials): Promise<OAuthToken> {
-    // Try cache first
-    const cachedToken = tokenCache.getToken(creds.clientId)
-    if (cachedToken) {
+    // Try keychain first
+    try {
+      const cachedToken = await invoke<TauriOAuthToken>('get_oauth_token', {
+        request: {
+          client_id: creds.clientId,
+          endpoint: creds.endpoint,
+        },
+      })
+      
       return {
-        accessToken: cachedToken,
-        expiresAt: Date.now() + 3600000, // 1 hour default
-        raw: {access_token: cachedToken}
+        accessToken: cachedToken.access_token,
+        expiresAt: cachedToken.expires_at ? cachedToken.expires_at * 1000 : Date.now() + 3600000,
+        raw: cachedToken,
       }
+    } catch (error) {
+      // Token not found or expired, continue to fetch new one
+      console.log('No valid token in keychain, fetching new one:', error)
     }
 
     // Build request body with standard OAuth fields
@@ -92,14 +80,48 @@ export class OAuthService {
 
     const accessToken = String(json.access_token)
     const expiresIn = Number(json.expires_in) || 3600
+    const expiresAt = Date.now() + expiresIn * 1000
 
-    // Cache the token
-    tokenCache.setToken(creds.clientId, accessToken, expiresIn)
+    // Store the token in OS keychain
+    try {
+      await invoke('store_oauth_token', {
+        request: {
+          client_id: creds.clientId,
+          endpoint: creds.endpoint,
+          token: {
+            access_token: accessToken,
+            token_type: json.token_type || 'Bearer',
+            expires_in: expiresIn,
+            scope: json.scope,
+            expires_at: Math.floor(expiresAt / 1000), // Convert to Unix timestamp
+          },
+        },
+      })
+    } catch (error) {
+      console.warn('Failed to store token in keychain:', error)
+      // Continue anyway, the token is still valid for this session
+    }
 
     return {
       accessToken,
-      expiresAt: Date.now() + expiresIn * 1000,
+      expiresAt,
       raw: json,
+    }
+  }
+
+  /**
+   * Clear a stored token from the OS keychain
+   */
+  static async clearToken(clientId: string, endpoint: string): Promise<void> {
+    try {
+      await invoke('delete_oauth_token', {
+        request: {
+          client_id: clientId,
+          endpoint: endpoint,
+        },
+      })
+    } catch (error) {
+      console.warn('Failed to clear token from keychain:', error)
     }
   }
 }

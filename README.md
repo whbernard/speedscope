@@ -11,22 +11,70 @@ Given raw profiling data, speedscope allows you to interactively explore the dat
 
 ## Quick start: build and run (macOS, Windows, Linux)
 
-This repository runs purely in the browser. No native code is required.
+This repository provides both web and native desktop versions using Tauri.
 
-### Development Mode
-1. Install Node.js LTS (24+ recommended)
-2. Install dependencies: `npm install`
-3. Start development server: `npm run dev`
-4. Open `http://localhost:8000` in your browser
-5. The server will automatically reload when you make changes
+### Prerequisites
+1. **Node.js LTS (24+ recommended)**
+2. **Rust** (for native desktop builds):
+   - Install from [rustup.rs](https://rustup.rs/)
+   - Required for Tauri native desktop applications
 
-### Production Build
+### Web Development Mode
+1. Install dependencies: `npm install`
+2. Start development server: `npm run dev`
+3. Open `http://localhost:8000` in your browser
+4. The server will automatically reload when you make changes
+
+### Native Desktop Development Mode
+1. Install dependencies: `npm install`
+2. Start Tauri development: `npm run tauri:dev`
+3. This will open the native desktop application
+4. Changes will automatically reload in the desktop app
+
+### Production Builds
+
+#### Web Build
 1. Build static site: `npm run build`
 2. This creates optimized files in the `build/` directory
 3. Serve the built files with any static HTTP server:
    - `npx serve build` (serves on port 3000 by default)
    - `npx serve build --listen 8080` (custom port)
    - Or deploy the `build/` directory to any web server
+
+#### Native Desktop Build
+1. Build native desktop app: `npm run tauri:build`
+2. This creates platform-specific installers in `src-tauri/target/release/bundle/`:
+   - **Windows**: `.msi` installer
+   - **macOS**: `.dmg` disk image and `.app` bundle
+   - **Linux**: `.deb`, `.rpm`, and `.AppImage` packages
+
+### Platform-Specific Notes
+
+#### Windows
+- Requires Visual Studio Build Tools or Visual Studio Community
+- Install Rust via rustup.rs
+- Run `npm run tauri:build` to create `.msi` installer
+
+#### macOS
+- Requires Xcode Command Line Tools: `xcode-select --install`
+- Install Rust via rustup.rs
+- Run `npm run tauri:build` to create `.dmg` and `.app` bundle
+
+#### Linux
+- Install system dependencies:
+  ```bash
+  # Ubuntu/Debian
+  sudo apt update
+  sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+  # Fedora
+  sudo dnf install webkit2gtk3-devel openssl-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+
+  # Arch Linux
+  sudo pacman -S webkit2gtk openssl gtk3 libappindicator-gtk3 librsvg
+  ```
+- Install Rust via rustup.rs
+- Run `npm run tauri:build` to create `.deb`, `.rpm`, and `.AppImage` packages
 
 ### CLI Usage (Optional)
 1. Install globally: `npm install -g speedscope`
