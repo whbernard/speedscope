@@ -935,13 +935,25 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             >
               flamegraph
             </a>{' '}
-            visualizer. Use it to help you make your software faster.
+            visualizer with <strong>🧠 AI-powered analysis</strong>. Use it to help you make your software faster.
           </p>
           <p className={css(style.landingP)}>
-            You can also analyze any selected time interval with an LLM. Click
+            <strong>🧠 LLM Integration:</strong> Analyze any selected time interval with AI models. Click
             {' '}<strong>🧠 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
             {' '}OAuth client credentials, and send the serialized profile data to
             your configured LLM endpoint for insights and recommendations.
+          </p>
+          <p className={css(style.landingP)}>
+            <em>This project was forked from{' '}
+            <a
+              className={css(style.link)}
+              href="https://github.com/jlfwong/speedscope"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              speedscope
+            </a>{' '}
+            and enhanced with LLM integration capabilities.</em>
           </p>
           {canUseXHR ? (
             <p className={css(style.landingP)}>
