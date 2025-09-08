@@ -1,8 +1,7 @@
 mod keychain;
 
-use keychain::{KeychainService, OAuthToken, KeychainError};
+use keychain::{KeychainService, OAuthToken};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct StoreTokenRequest {
