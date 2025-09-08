@@ -697,6 +697,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             clientSecret: oauthConfig.clientSecret,
             scope: 'api', // Default scope for LLM API access
             provider: oauthConfig.provider,
+            actualEndpoint: oauthConfig.oauthUrl.includes('localhost:3001') 
+              ? 'https://api.example.com/oauth/token' 
+              : undefined,
           })
           
           accessToken = oauthToken.accessToken
@@ -734,6 +737,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           const llmService = new LLMService({
             endpoint: llmEndpoint,
             provider: llmConfig.provider || 'bedrockClaudeSonnet',
+            actualEndpoint: llmEndpoint.includes('localhost:3001')
+              ? 'https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke'
+              : undefined,
           })
 
           const prompt = `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`

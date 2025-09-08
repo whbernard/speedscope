@@ -5,6 +5,8 @@ export type LLMProviderKey = 'bedrockClaudeSonnet'
 export interface LLMConfig {
   endpoint: string
   provider: LLMProviderKey
+  /** Actual LLM endpoint for proxy forwarding (development only) */
+  actualEndpoint?: string
 }
 
 /**
@@ -31,6 +33,11 @@ export class LLMService {
 
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`
+    }
+
+    // Add the actual endpoint header for proxy forwarding (development only)
+    if (this.config.actualEndpoint) {
+      headers['X-Target-URL'] = this.config.actualEndpoint
     }
 
     // Prepare request payload for Claude/Bedrock format

@@ -6,11 +6,19 @@
  */
 
 /**
+ * Check if we're in development mode
+ */
+const isDevelopment = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+/**
  * OAuth Provider URLs
  */
 export const OAUTH_URLS = {
   /** Generic OAuth 2.0 token endpoint */
-  generic: 'https://api.example.com/oauth/token',
+  generic: isDevelopment 
+    ? 'http://localhost:3001/api/oauth' 
+    : 'https://api.example.com/oauth/token',
 } as const
 
 /**
@@ -18,7 +26,9 @@ export const OAUTH_URLS = {
  */
 export const LLM_URLS = {
   /** AWS Bedrock Claude Sonnet endpoint */
-  bedrockClaudeSonnet: 'https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke',
+  bedrockClaudeSonnet: isDevelopment
+    ? 'http://localhost:3001/api/llm/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke'
+    : 'https://bedrock-runtime.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke',
 } as const
 
 /**

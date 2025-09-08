@@ -8,6 +8,8 @@ export interface OAuthCredentials {
   clientSecret: string
   scope?: string
   provider?: OAuthProviderKey
+  /** Actual OAuth endpoint for proxy forwarding (development only) */
+  actualEndpoint?: string
 }
 
 export interface OAuthToken {
@@ -72,11 +74,19 @@ export class OAuthService {
       client_secret: creds.clientSecret,
     }
 
+    // In development, we need to tell the proxy where to forward the request
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Add the actual endpoint header for proxy forwarding (development only)
+    if (creds.actualEndpoint) {
+      headers['X-Target-URL'] = creds.actualEndpoint
+    }
+
     const resp = await fetch(creds.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(body),
     })
 
