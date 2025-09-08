@@ -6,6 +6,7 @@ export interface OAuthCredentials {
   endpoint: string
   clientId: string
   clientSecret: string
+  scope?: string
   provider?: OAuthProviderKey
 }
 
@@ -30,30 +31,32 @@ export class OAuthService {
     const cached = tokenCache.getToken(provider, creds.clientId)
     if (cached) {
       const now = Date.now()
-      const expiresInSec = cached[provider.responseSchema.expires_in]
-      const issuedAtMs = cached.__issuedAtMs || 0
+      const expiresInSec = Number(cached[provider.responseSchema.expires_in!])
+      const issuedAtMs = (cached as any).__issuedAtMs || 0
       const expiresAt = issuedAtMs + expiresInSec * 1000
       if (now < expiresAt) {
         return {
-          accessToken: cached[provider.responseSchema.access_token],
+          accessToken: String((cached as any)[provider.responseSchema.access_token!]),
           expiresAt,
           raw: cached,
         }
       }
     }
 
-    // Build request body based on provider fields
-    const body = new URLSearchParams()
-    body.set('grant_type', provider.grantType)
-    body.set(provider.clientIdField, creds.clientId)
-    body.set(provider.clientSecretField, creds.clientSecret)
+    // Build request body with standard OAuth fields
+    const body = {
+      grant_type: provider.grantType,
+      scope: creds.scope || 'api', // Use provided scope or default to 'api'
+      client_id: creds.clientId,
+      client_secret: creds.clientSecret,
+    }
 
     const resp = await fetch(creds.endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': provider.contentType,
+        'Content-Type': 'application/json',
       },
-      body: body.toString(),
+      body: JSON.stringify(body),
     })
 
     if (!resp.ok) {
@@ -69,8 +72,8 @@ export class OAuthService {
     json.__issuedAtMs = Date.now()
     tokenCache.setToken(provider, creds.clientId, json)
 
-    const accessToken: string = json[provider.responseSchema.access_token]
-    const expiresIn: number = json[provider.responseSchema.expires_in]
+    const accessToken: string = String(json[provider.responseSchema.access_token!])
+    const expiresIn: number = Number(json[provider.responseSchema.expires_in!])
 
     return {
       accessToken,

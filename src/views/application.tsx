@@ -700,17 +700,15 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         // Use OAuthService to get access token
         let accessToken: string
         try {
-          const oauthService = new OAuthService(
-            {
-              endpoint: oauthConfig.oauthUrl,
-              client_id: oauthConfig.clientId,
-              client_secret: oauthConfig.clientSecret,
-              grant_type: oauthProviderConfig.grantType,
-            },
-            oauthProviderConfig
-          )
+          const oauthToken = await OAuthService.getToken({
+            endpoint: oauthConfig.oauthUrl,
+            clientId: oauthConfig.clientId,
+            clientSecret: oauthConfig.clientSecret,
+            scope: 'api', // Default scope for LLM API access
+            provider: oauthConfig.provider,
+          })
           
-          accessToken = await oauthService.getAccessToken()
+          accessToken = oauthToken.accessToken
           
           if (!accessToken) {
             throw new Error('No access token received from OAuth server')
