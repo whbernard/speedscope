@@ -16,12 +16,9 @@ This repository runs purely in the browser. No native code is required.
 ### Development Mode
 1. Install Node.js LTS (24+ recommended)
 2. Install dependencies: `npm install`
-3. Start development server (with CORS proxy): `npm run dev:full`
-   - Or start separately: `npm run proxy` (port 3001) and `npm run dev` (port 8000)
+3. Start development server: `npm run dev`
 4. Open `http://localhost:8000` in your browser
 5. The server will automatically reload when you make changes
-
-**Note**: The development setup includes a CORS proxy server to prevent cross-origin issues when making OAuth and LLM API requests. See [CORS_DEPLOYMENT.md](CORS_DEPLOYMENT.md) for production deployment options.
 
 ### Production Build
 1. Build static site: `npm run build`
