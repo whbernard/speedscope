@@ -1,4 +1,3 @@
-English | [简体中文](./README-zh_CN.md)
 # 🔬speedscope 
 A fast, interactive web-based viewer for performance profiles. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more). Try it here: https://www.speedscope.app
 
