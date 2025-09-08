@@ -4,7 +4,7 @@ import {useState, useEffect, useCallback} from 'preact/hooks'
 import {Profile} from '../lib/profile'
 import {FontFamily, FontSize, Duration} from './style'
 import {Theme, withTheme} from './themes/theme'
-import {DEFAULT_OAUTH_CONFIG, getOAuthConfig, tokenCache} from '../config/api-config'
+import {getOAuthUrl} from '../config/api-config'
 
 interface IntervalSelectorProps {
   profile: Profile
@@ -35,13 +35,11 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [endValue, setEndValue] = useState(defaultEndValue)
   const [startPercent, setStartPercent] = useState((defaultStartValue / totalWeight) * 100)
   const [endPercent, setEndPercent] = useState((defaultEndValue / totalWeight) * 100)
-  const [oauthUrl, setOauthUrl] = useState(DEFAULT_OAUTH_CONFIG.url)
+  const [oauthUrl, setOauthUrl] = useState(getOAuthUrl('generic'))
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
-  const [oauthProvider] =
-    useState<keyof typeof import('../config/api-config').OAUTH_PROVIDERS>('generic')
-  const [llmProvider] =
-    useState<keyof typeof import('../config/api-config').LLM_PROVIDERS>('bedrockClaudeSonnet')
+  const [oauthProvider] = useState<'generic'>('generic')
+  const [llmProvider] = useState<'bedrockClaudeSonnet'>('bedrockClaudeSonnet')
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [hasCachedToken, setHasCachedToken] = useState(false)
 
@@ -66,9 +64,8 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   // Check for cached token when client ID changes
   useEffect(() => {
     if (clientId) {
-      const oauthProviderConfig = getOAuthConfig(oauthProvider)
-      const cached = tokenCache.hasValidToken(oauthProviderConfig, clientId)
-      setHasCachedToken(cached)
+      // For now, assume no cached token (simplified implementation)
+      setHasCachedToken(false)
     } else {
       setHasCachedToken(false)
     }
@@ -570,7 +567,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                     onKeyUp={e => e.stopPropagation()}
                     onKeyPress={e => e.stopPropagation()}
                     className={css(style.input)}
-                    placeholder={DEFAULT_OAUTH_CONFIG.url}
+                    placeholder={getOAuthUrl('generic')}
                   />
                 </div>
                 <div className={css(style.fieldGroup)}>

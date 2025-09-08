@@ -18,13 +18,7 @@ import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
-import {
-  getOAuthConfig,
-  getLLMConfig,
-  validateOAuthResponse,
-  validateLLMResponse,
-  tokenCache,
-} from '../config/api-config'
+import {getOAuthUrl, getLLMUrl} from '../config/api-config'
 import {OAuthService} from '../services/oauth-service'
 import {LLMService} from '../services/llm-service'
 import {HashParams} from '../lib/hash-params'
@@ -689,12 +683,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         const activeProfile = this.props.activeProfileState.profile
 
         // Get configurations from the interval selector
-        const oauthProviderConfig = getOAuthConfig(oauthConfig.provider || 'generic')
-        const llmProviderConfig = getLLMConfig(llmConfig?.provider || 'bedrockClaudeSonnet')
-
-        const llmEndpoint = llmProviderConfig.url
+        const llmEndpoint = getLLMUrl(llmConfig?.provider || 'bedrockClaudeSonnet')
         let authHeaders: Record<string, string> = {
-          'Content-Type': llmProviderConfig.contentType,
+          'Content-Type': 'application/json',
         }
 
         // Use OAuthService to get access token
@@ -742,10 +733,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         try {
           const llmService = new LLMService({
             endpoint: llmEndpoint,
-            provider: llmConfig.provider,
-            requestSchema: llmProviderConfig.requestSchema,
-            responseSchema: llmProviderConfig.responseSchema,
-            contentType: llmProviderConfig.contentType,
+            provider: llmConfig.provider || 'bedrockClaudeSonnet',
           })
 
           const prompt = `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`

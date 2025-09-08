@@ -1,81 +1,68 @@
-import {DEFAULT_LLM_CONFIG, getLLMConfig, LLM_PROVIDERS} from '../config/api-config'
+import {getLLMUrl} from '../config/api-config'
 
-export type LLMProviderKey = keyof typeof LLM_PROVIDERS
+export type LLMProviderKey = 'bedrockClaudeSonnet'
 
-export interface LLMRequestOptions {
-  provider?: LLMProviderKey
-  model?: string
-  prompt: string
-  profileJson: string
-  accessToken?: string // optional bearer token if OAuth is used externally
-  extraHeaders?: Record<string, string>
-}
-
-export interface LLMResponse {
-  ok: boolean
-  status: number
-  raw: any
-  text?: string
+export interface LLMConfig {
+  endpoint: string
+  provider: LLMProviderKey
 }
 
 /**
- * LLMService submits analysis requests to the configured LLM endpoint.
+ * LLMService handles communication with LLM APIs
  */
 export class LLMService {
-  static async send(options: LLMRequestOptions): Promise<LLMResponse> {
-    const providerKey: LLMProviderKey = options.provider || 'bedrockClaudeSonnet'
-    const provider = getLLMConfig(providerKey)
+  private config: LLMConfig
 
+  constructor(config: LLMConfig) {
+    this.config = config
+  }
+
+  /**
+   * Send a prompt to the LLM API
+   */
+  async sendPrompt(
+    prompt: string,
+    jsonData: string,
+    accessToken?: string,
+  ): Promise<string> {
     const headers: Record<string, string> = {
-      'Content-Type': provider.contentType,
-      ...(options.extraHeaders || {}),
+      'Content-Type': 'application/json',
     }
 
-    if (options.accessToken) {
-      headers['Authorization'] = `Bearer ${options.accessToken}`
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
     }
 
-    const payload: any = {
-      ...provider.requestSchema,
+    // Prepare request payload for Claude/Bedrock format
+    const payload = {
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens: 2000,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
     }
 
-    if (options.model || provider.defaultModel) {
-      payload.model = options.model || provider.defaultModel
-    }
-
-    // Merge prompt and data into messages/content
-    // Assumes OpenAI-style schema; can be adapted per provider.requestSchema
-    if (!payload.messages) payload.messages = []
-    payload.messages = [
-      {
-        role: 'user',
-        content: `${options.prompt}\n\nProfile data:\n${options.profileJson}`,
-      },
-    ]
-
-    const resp = await fetch(provider.url, {
+    const response = await fetch(this.config.endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
     })
 
-    let raw: any = null
-    try {
-      raw = await resp.json()
-    } catch {
-      // no-op; non-JSON response
+    if (!response.ok) {
+      throw new Error(`LLM API failed: ${response.status} ${response.statusText}`)
     }
 
-    let text: string | undefined
-    if (raw?.content?.[0]?.text) {
-      text = raw.content[0].text
+    const responseData = await response.json()
+
+    // Extract text content from Claude response format
+    if (responseData.content && Array.isArray(responseData.content) && responseData.content.length > 0) {
+      return responseData.content[0].text || 'No response received'
     }
 
-    return {
-      ok: resp.ok,
-      status: resp.status,
-      raw,
-      text,
-    }
+    throw new Error('Invalid LLM response format')
   }
 }

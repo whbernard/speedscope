@@ -1,6 +1,6 @@
-import {OAUTH_PROVIDERS, getOAuthConfig, tokenCache, validateOAuthResponse} from '../config/api-config'
+import {getOAuthUrl} from '../config/api-config'
 
-export type OAuthProviderKey = keyof typeof OAUTH_PROVIDERS
+export type OAuthProviderKey = 'generic'
 
 export interface OAuthCredentials {
   endpoint: string
@@ -17,36 +17,57 @@ export interface OAuthToken {
 }
 
 /**
- * OAuthService performs OAuth 2.0 Client Credentials grant and caches tokens per (provider, clientId).
+ * Simple in-memory token cache
+ */
+class TokenCache {
+  private cache: Map<string, {token: string, expiresAt: number}> = new Map()
+
+  setToken(clientId: string, token: string, expiresIn: number): void {
+    const expiresAt = Date.now() + expiresIn * 1000
+    this.cache.set(clientId, {token, expiresAt})
+  }
+
+  getToken(clientId: string): string | null {
+    const cached = this.cache.get(clientId)
+    if (!cached) return null
+    
+    if (Date.now() >= cached.expiresAt) {
+      this.cache.delete(clientId)
+      return null
+    }
+    
+    return cached.token
+  }
+
+  clearToken(clientId: string): void {
+    this.cache.delete(clientId)
+  }
+}
+
+const tokenCache = new TokenCache()
+
+/**
+ * OAuthService performs OAuth 2.0 Client Credentials grant and caches tokens
  */
 export class OAuthService {
   /**
-   * Acquire a bearer token, using in-memory cache when valid.
+   * Acquire a bearer token, using in-memory cache when valid
    */
   static async getToken(creds: OAuthCredentials): Promise<OAuthToken> {
-    const providerKey: OAuthProviderKey = creds.provider || 'generic'
-    const provider = getOAuthConfig(providerKey)
-
     // Try cache first
-    const cached = tokenCache.getToken(provider, creds.clientId)
-    if (cached) {
-      const now = Date.now()
-      const expiresInSec = Number(cached[provider.responseSchema.expires_in!])
-      const issuedAtMs = (cached as any).__issuedAtMs || 0
-      const expiresAt = issuedAtMs + expiresInSec * 1000
-      if (now < expiresAt) {
-        return {
-          accessToken: String((cached as any)[provider.responseSchema.access_token!]),
-          expiresAt,
-          raw: cached,
-        }
+    const cachedToken = tokenCache.getToken(creds.clientId)
+    if (cachedToken) {
+      return {
+        accessToken: cachedToken,
+        expiresAt: Date.now() + 3600000, // 1 hour default
+        raw: {access_token: cachedToken}
       }
     }
 
     // Build request body with standard OAuth fields
     const body = {
-      grant_type: provider.grantType,
-      scope: creds.scope || 'api', // Use provided scope or default to 'api'
+      grant_type: 'client_credentials',
+      scope: creds.scope || 'api',
       client_id: creds.clientId,
       client_secret: creds.clientSecret,
     }
@@ -64,20 +85,20 @@ export class OAuthService {
     }
 
     const json = await resp.json()
-    if (!validateOAuthResponse(json, provider)) {
-      throw new Error('Invalid OAuth response format')
+    
+    if (!json.access_token) {
+      throw new Error('Invalid OAuth response: no access_token')
     }
 
-    // Tag issuance time for cache expiry computation
-    json.__issuedAtMs = Date.now()
-    tokenCache.setToken(provider, creds.clientId, json)
+    const accessToken = String(json.access_token)
+    const expiresIn = Number(json.expires_in) || 3600
 
-    const accessToken: string = String(json[provider.responseSchema.access_token!])
-    const expiresIn: number = Number(json[provider.responseSchema.expires_in!])
+    // Cache the token
+    tokenCache.setToken(creds.clientId, accessToken, expiresIn)
 
     return {
       accessToken,
-      expiresAt: json.__issuedAtMs + expiresIn * 1000,
+      expiresAt: Date.now() + expiresIn * 1000,
       raw: json,
     }
   }
