@@ -1,0 +1,29 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="flameGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f7931e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffd23f;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#1a1a1a" stroke="#333" stroke-width="4"/>
+  
+  <!-- Main flame shape -->
+  <path d="M128 220 C 100 200, 80 180, 80 150 C 80 130, 90 120, 100 110 C 110 100, 120 90, 128 80 C 136 90, 146 100, 156 110 C 166 120, 176 130, 176 150 C 176 180, 156 200, 128 220 Z" 
+        fill="url(#flameGradient)" 
+        stroke="#ff4500" 
+        stroke-width="2"/>
+  
+  <!-- Inner flame highlight -->
+  <path d="M128 200 C 110 185, 95 170, 95 150 C 95 135, 102 128, 110 120 C 118 112, 128 105, 128 95 C 128 105, 138 112, 146 120 C 154 128, 161 135, 161 150 C 161 170, 146 185, 128 200 Z" 
+        fill="#fff" 
+        opacity="0.3"/>
+  
+  <!-- Sparkles -->
+  <circle cx="90" cy="100" r="3" fill="#ffd23f" opacity="0.8"/>
+  <circle cx="166" cy="110" r="2" fill="#ffd23f" opacity="0.6"/>
+  <circle cx="110" cy="80" r="2" fill="#ffd23f" opacity="0.7"/>
+  <circle cx="146" cy="85" r="2" fill="#ffd23f" opacity="0.5"/>
+</svg>

@@ -4,7 +4,6 @@ import {useState, useEffect, useCallback} from 'preact/hooks'
 import {Profile} from '../lib/profile'
 import {FontFamily, FontSize, Duration} from './style'
 import {Theme, withTheme} from './themes/theme'
-import {getOAuthUrl} from '../config/api-config'
 
 interface IntervalSelectorProps {
   profile: Profile
@@ -35,7 +34,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [endValue, setEndValue] = useState(defaultEndValue)
   const [startPercent, setStartPercent] = useState((defaultStartValue / totalWeight) * 100)
   const [endPercent, setEndPercent] = useState((defaultEndValue / totalWeight) * 100)
-  const [oauthUrl, setOauthUrl] = useState(getOAuthUrl('generic'))
+  // OAuth URL, Grant Type, and Scope are now hardcoded in the adapters
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [oauthProvider] = useState<'generic'>('generic')
@@ -453,9 +452,9 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   }
 
   const handleConfirm = () => {
-    if (!oauthUrl || !clientId || !clientSecret) {
+    if (!clientId || !clientSecret) {
       alert(
-        'Please fill in all authentication fields: Authentication URL, Client ID, and Client Secret',
+        'Please fill in all authentication fields: Client ID and Client Secret',
       )
       return
     }
@@ -468,13 +467,14 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     try {
       const jsonData = generateFilteredJsonData()
       const oauthConfig = {
-        oauthUrl,
         clientId,
         clientSecret,
         provider: oauthProvider,
+        // oauthUrl, grantType, and scope are now hardcoded in the adapters
       }
       const llmConfig = {
         provider: llmProvider,
+        // endpoint, maxTokens, and temperature are now hardcoded in the adapters
       }
       props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, jsonData, llmConfig)
     } catch (error) {
@@ -557,19 +557,6 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
               <h4>API Configuration</h4>
 
               <div className={css(style.oauthFields)}>
-                <div className={css(style.fieldGroup)}>
-                  <label className={css(style.label)}>Authentication URL:</label>
-                  <input
-                    type="text"
-                    value={oauthUrl}
-                    onChange={e => setOauthUrl((e.target as HTMLInputElement).value)}
-                    onKeyDown={e => e.stopPropagation()}
-                    onKeyUp={e => e.stopPropagation()}
-                    onKeyPress={e => e.stopPropagation()}
-                    className={css(style.input)}
-                    placeholder={getOAuthUrl('generic')}
-                  />
-                </div>
                 <div className={css(style.fieldGroup)}>
                   <label className={css(style.label)}>Client ID:</label>
                   <input

@@ -1,28 +1,105 @@
 # 🔬Speedscope with LLM 
 A fast, interactive web-based viewer for performance profiles with **AI-powered analysis**. Supports import from a variety of profiles in a variety of languages (JS, Ruby, Python, Go & more).
 
-## ⚡ TL;DR
+## ⚡ Quick Start
+
+### 🚀 Super Easy (One Command)
 ```bash
-git clone https://github.com/whbernard/speedscope.git && cd speedscope && npm install && npm run dev
+# Clone, install, and run with interactive menu
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && ./run.sh
 ```
-Open `http://localhost:8000` - Done! 🎉
+
+### 🖥️ Desktop App (Recommended - Full Features)
+```bash
+# Clone and install
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install
+
+# Run the desktop app
+npm run electron:dev
+```
+
+### 🌐 Web Version (Fast Setup)
+```bash
+# Clone and install
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install
+
+# Run web version
+npm run dev
+# Open http://localhost:8000
+```
+
+### 🪟 Windows Users
+```cmd
+REM Clone, install, and run with interactive menu
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && run.bat
+```
 
 ## 🚀 Getting Started
 
-**Web Version (Fastest):**
-```bash
-git clone https://github.com/whbernard/speedscope.git
-cd speedscope
-npm install && npm run dev
-```
-Open `http://localhost:8000`
+### Prerequisites
+- **Node.js LTS (18+)** - [Download here](https://nodejs.org/)
+- **Git** - [Download here](https://git-scm.com/)
 
-**Native Desktop (OS Keychain):**
+### Platform-Specific Requirements (Desktop App Only)
+
+> **Note**: The web version (`npm run dev`) works on all platforms without additional setup!
+
+#### 🍎 macOS
 ```bash
-git clone https://github.com/whbernard/speedscope.git
-cd speedscope
-npm install && npm run tauri:dev
+# Install Xcode Command Line Tools (one-time setup)
+xcode-select --install
 ```
+
+#### 🪟 Windows
+- Install **Visual Studio Build Tools** from [Microsoft](https://visualstudio.microsoft.com/downloads/)
+- Include "C++ build tools" workload during installation
+
+#### 🐧 Linux
+**Ubuntu/Debian:**
+```bash
+sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential libssl-dev libgtk-3-dev
+```
+
+**Other distros**: Install `webkit2gtk`, `openssl`, and `gtk3` development packages
+
+## 🏗️ Available Commands
+
+### Development
+```bash
+# Run desktop app (recommended)
+npm run electron:dev
+
+# Run web version
+npm run dev
+
+# Build for production
+npm run build
+```
+
+### Production Builds
+```bash
+# Build desktop app for distribution
+npm run electron:build
+```
+
+**Output locations:**
+- **Windows**: `dist/` (`.exe` installer)
+- **macOS**: `dist/` (`.dmg` disk image and `.app` bundle)  
+- **Linux**: `dist/` (`.AppImage`, `.deb`, and `.rpm` packages)
+
+### Version Comparison
+
+| Feature | Web Version | Desktop App |
+|---------|-------------|-------------|
+| **Setup Speed** | ⚡ Instant | 🚀 Fast |
+| **OS Keychain** | ❌ No | ✅ Yes |
+| **CORS Restrictions** | ⚠️ Limited | ✅ None |
+| **Native Experience** | ❌ Browser | ✅ Desktop |
+| **LLM Integration** | ⚠️ Basic | ✅ Full |
 
 ## 🧠 LLM Integration Features
 - **Send to LLM**: Analyze profiling data with AI models
@@ -30,147 +107,281 @@ npm install && npm run tauri:dev
 - **OS Keychain Storage**: Tokens securely stored in OS keychain (desktop version)
 - **Custom Prompts**: Ask specific questions about your performance data
 - **Real-time Analysis**: Get instant insights from your profiling data
+- **Configuration Management**: External config file for easy service endpoint management
 
 Given raw profiling data, speedscope allows you to interactively explore the data to get insight into what's slow in your application, or allocating all the memory, or whatever data is represented in the profiling data. The LLM integration takes this a step further by providing AI-powered analysis and recommendations.
 
-## Quick Start
+## 💻 Command Line Usage
 
-### 🚀 One-Command Setup (Web Version)
+### Super Easy Commands
 ```bash
-npm install && npm run dev
-```
-Then open `http://localhost:8000` in your browser.
+# Interactive menu (recommended)
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && ./run.sh
 
-### 🖥️ One-Command Setup (Native Desktop)
-```bash
-npm install && npm run tauri:dev
-```
-This opens the native desktop application with OS keychain integration.
-
-### 📦 Production Builds
-
-#### Web Build
-```bash
-npm run build
-```
-Creates optimized files in `build/` directory. Serve with `npx serve build`.
-
-#### Native Desktop Build
-```bash
-npm run tauri:build
-```
-Creates platform-specific installers in `src-tauri/target/release/bundle/`:
-- **Windows**: `.msi` installer
-- **macOS**: `.dmg` disk image and `.app` bundle  
-- **Linux**: `.deb`, `.rpm`, and `.AppImage` packages
-
-### Prerequisites
-
-**For Web Version:**
-- Node.js LTS (24+ recommended)
-
-**For Native Desktop Version:**
-- Node.js LTS (24+ recommended)
-- Rust (install from [rustup.rs](https://rustup.rs/))
-
-**Platform-Specific Requirements:**
-
-**Windows:**
-- Visual Studio Build Tools or Visual Studio Community
-
-**macOS:**
-- Xcode Command Line Tools: `xcode-select --install`
-
-**Linux:**
-```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-
-# Fedora  
-sudo dnf install webkit2gtk3-devel openssl-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel
-
-# Arch Linux
-sudo pacman -S webkit2gtk openssl gtk3 libappindicator-gtk3 librsvg
+# Windows users
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && run.bat
 ```
 
-### CLI Usage (Optional)
-1. Install globally: `npm install -g speedscope`
-2. Open profile in browser: `speedscope /path/to/profile`
+### Manual Commands
+```bash
+# Clone and run desktop app in one line
+git clone https://github.com/whbernard/speedscope.git && cd speedscope && npm install && npm run electron:dev
+
+# Or step by step
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install
+npm run electron:dev
+```
+
+### Global CLI (Optional)
+```bash
+# Install globally for command-line usage
+npm install -g speedscope
+
+# Open profile directly
+speedscope /path/to/profile.json
+```
 
 ### Supported Browsers
 - Latest Chrome and Firefox (see `browserslist` in `package.json`)
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**"Command not found: npm"**
+```bash
+# Install Node.js from https://nodejs.org/
+# Or use a version manager like nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install --lts
+nvm use --lts
+```
+
+**"Failed to load image" error on macOS**
+```bash
+# Clear macOS icon cache
+sudo rm -rf /Library/Caches/com.apple.iconservices.store
+killall Dock
+```
+
+**Desktop app won't start**
+```bash
+# Try the web version instead
+npm run dev
+# Then open http://localhost:8000
+```
+
+**Permission denied on Linux**
+```bash
+# Make sure you have the required system packages
+sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential
+```
+
 ---
 
-## LLM integration: request schema and configuration
+## 🔧 Configuration
 
-The “Send to LLM” feature is configured in `src/config/api-config.ts`.
+The application uses a centralized `config.json` file for configuring OAuth and LLM services. This allows you to easily modify endpoints, authentication parameters, and request schemas without changing code.
 
-- Edit `DEFAULT_LLM_CONFIG` to change:
-  - `url`: LLM endpoint URL
-  - `defaultModel`: default model identifier
-  - `contentType`: request content type
-  - `requestSchema`: JSON payload template merged into the outbound request
-  - `responseSchema`: structure used to extract the model’s response
+### Configuration File Location
+- **Development**: `config.json` in the project root
+- **Production**: `config.json` in the `build/` directory (automatically copied during build)
 
-- Add providers
-  - Extend `LLM_PROVIDERS` with a new key whose value mirrors `DEFAULT_LLM_CONFIG`
-  - Select the provider from the UI or via the code path that calls `getLLMConfig()`
+### LLM Configuration
 
-Minimal example (pseudocode) of the JSON payload structure used when sending to the LLM:
+Edit the `llm` section in `config.json`:
 
 ```json
 {
-  "model": "your-model-id",
-  "messages": [
-    { "role": "user", "content": "<analysis prompt and serialized profile data>" }
-  ]
+  "llm": {
+    "endpoint": "https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke",
+    "provider": "bedrockClaudeSonnet",
+    "model": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "max_tokens": 2000,
+    "temperature": 0.7,
+    "custom_headers": {
+      "X-API-Key": "{{API_KEY}}",
+      "X-Custom-Header": "custom-value",
+      "Authorization": "Bearer {{ACCESS_TOKEN}}",
+      "X-Request-ID": "{{REQUEST_ID}}"
+    },
+    "request_schema": {
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "text": "{{prompt}}"
+            }
+          ]
+        }
+      ],
+      "system": [
+        {
+          "text": "You are a performance analysis expert. Analyze the provided profiling data and provide insights about performance bottlenecks, optimization opportunities, and recommendations.\n\nProfile data:\n{{profile_data}}"
+        }
+      ],
+      "inferenceConfig": {
+        "maxTokens": 2000,
+        "temperature": 0.7,
+        "topP": 0.9,
+        "stopSequences": []
+      }
+    }
+  }
 }
 ```
 
-The actual shape is defined in `requestSchema` and then combined with the current prompt and the serialized profile JSON at runtime.
+**Configuration Options:**
+- `endpoint`: LLM API endpoint URL (Bedrock runtime endpoint)
+- `provider`: Provider identifier (for UI display)
+- `model`: Model identifier to use (Bedrock model ARN)
+- `max_tokens`: Maximum tokens in response
+- `temperature`: Response creativity (0.0-1.0)
+- `custom_headers`: Optional custom HTTP headers with template variable support:
+  - `{{API_KEY}}`: Environment variable `API_KEY`
+  - `{{ACCESS_TOKEN}}`: OAuth access token from request
+  - `{{REQUEST_ID}}`: Auto-generated UUID for request tracking
+  - `{{LLM_API_KEY}}`: Environment variable `LLM_API_KEY`
+  - `{{AUTH_TOKEN}}`: Environment variable `AUTH_TOKEN`
+  - `{{USER_ID}}`: Environment variable `USER_ID`
+  - `{{prompt}}`: Current user prompt
+  - `{{profile_data}}`: Current profile data
+- `request_schema`: Bedrock request payload with:
+  - `messages`: Array of message objects with `role` and `content` fields (contains `{{prompt}}`)
+  - `system`: Array of system message objects with `text` field (contains `{{profile_data}}` and context)
+  - `inferenceConfig`: Inference parameters (maxTokens, temperature, topP, stopSequences)
+  - Template variables: `{{prompt}}` in user message, `{{profile_data}}` in system message
 
----
+### OAuth Configuration
 
-## OAuth configuration: token request schema
+Edit the `oauth` section in `config.json`:
 
-OAuth support uses the client credentials grant flow. Configuration lives in `src/config/api-config.ts`.
+```json
+{
+  "oauth": {
+    "endpoint": "https://your-oauth-provider.com/oauth/token",
+    "grant_type": "client_credentials",
+    "scope": "api",
+    "client_id_field": "client_id",
+    "client_secret_field": "client_secret",
+    "response_schema": {
+      "access_token_field": "access_token",
+      "expires_in_field": "expires_in",
+      "token_type_field": "token_type"
+    }
+  }
+}
+```
 
-- Edit `OAUTH_PROVIDERS.generic` to change:
-  - `contentType`: usually `application/x-www-form-urlencoded`
-  - `clientIdField` / `clientSecretField`: field names expected by your server
-  - `grantType`: typically `client_credentials`
-  - `responseSchema`: where to read `access_token` and `expires_in`
+**Configuration Options:**
+- `endpoint`: OAuth token endpoint URL
+- `grant_type`: OAuth grant type (typically `client_credentials`)
+- `scope`: OAuth scope parameter
+- `client_id_field`: Field name for client ID in request body
+- `client_secret_field`: Field name for client secret in request body
+- `response_schema`: Field names in OAuth response for token extraction
 
-- Runtime configuration
-  - From the UI, specify: OAuth URL, Client ID, Client Secret
-  - Tokens are cached in-memory for the session (see `tokenCache`)
+### Example OAuth Token Request
 
-Example token request the app issues:
+The application will send requests like this:
 
 ```
-POST <oauth_url>
+POST https://your-oauth-provider.com/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=client_credentials&client_id=<id>&client_secret=<secret>
+grant_type=client_credentials&client_id=<your_client_id>&client_secret=<your_client_secret>&scope=api
 ```
+
+### Environment Variables for Custom Headers
+
+You can set environment variables to use in your custom headers:
+
+```bash
+# Set API key for LLM provider
+export API_KEY="your-secret-api-key"
+export LLM_API_KEY="your-llm-api-key"
+
+# Set authentication tokens
+export AUTH_TOKEN="your-auth-token"
+
+# Set user identification
+export USER_ID="user123"
+```
+
+These variables will be automatically substituted in your custom headers configuration.
 
 ---
 
-## How to send profiling data to the LLM
+## 📤 How to Send Profiling Data to the LLM
 
-1. Load a profile via drag-and-drop or the Import/Browse button.
-2. Zoom/pan the timeline to the interval you want analyzed.
-3. Click “Send to LLM” in the toolbar.
-4. Configure authentication:
-   - OAuth (enter OAuth URL, Client ID, Client Secret)
-5. Choose a prompt (or write your own) and submit.
-6. The app serializes the selected interval to JSON and sends it to the LLM endpoint defined in `DEFAULT_LLM_CONFIG` (or your selected provider). The response text is shown in the UI.
+1. **Load a profile** via drag-and-drop or the Import/Browse button
+2. **Select time interval** by zooming/panning the timeline to the range you want analyzed
+3. **Click "Send to LLM"** in the toolbar
+4. **Configure authentication:**
+   - Enter OAuth URL, Client ID, and Client Secret
+   - Or use pre-configured values from `config.json`
+5. **Choose a prompt** (or write your own) and submit
+6. **View results** - the app serializes the selected interval to JSON and sends it to your configured LLM endpoint
 
-Troubleshooting tips:
-- Check the browser console Network tab if you get errors
-- Verify OAuth endpoint and credentials (Client ID, Client Secret)
-- Verify your LLM endpoint URL and request schema
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Build Errors
+```bash
+# If you get Rust compilation errors on macOS
+xcode-select --install
+
+# If you get missing dependencies on Linux
+sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+# If you get missing dependencies on Windows
+# Install Visual Studio Build Tools with C++ workload
+```
+
+#### Runtime Issues
+
+**"Failed to load config.json"**
+- Ensure `config.json` exists in the project root
+- Check that the JSON syntax is valid
+- For production builds, verify the file is copied to `build/` directory
+
+**"HTTP request failed" or CORS errors**
+- Use the native desktop version (`npm run electron:dev`) to avoid CORS restrictions
+- Verify your OAuth and LLM endpoints are accessible
+- Check that endpoints use HTTPS (required for security)
+
+**"OAuth authentication failed"**
+- Verify OAuth endpoint URL is correct
+- Check Client ID and Client Secret are valid
+- Ensure the OAuth provider supports client credentials grant flow
+- Verify the `grant_type` and `scope` values in `config.json`
+
+**"LLM request failed"**
+- Verify LLM endpoint URL is correct
+- Check that the request schema in `config.json` matches your LLM provider's API
+- Ensure you have valid API credentials/access tokens
+- Verify the model identifier is correct for your provider
+- Check custom headers configuration (API keys, authentication tokens)
+- Verify OAuth token is valid if using OAuth authentication
+
+#### Debug Mode
+```bash
+# Run with debug logging
+DEBUG=* npm run electron:dev
+
+# Check browser console for frontend errors
+# Check terminal output for Electron backend errors
+```
+
+### Getting Help
+- Check the browser console Network tab for HTTP request details
+- Verify your `config.json` matches the expected schema
+- Test OAuth endpoints independently (e.g., with curl or Postman)
+- Ensure all required dependencies are installed for your platform
 
 [0]: https://en.wikipedia.org/wiki/Profiling_(computer_programming)#Statistical_profilers
 [1]: https://github.com/brendangregg/FlameGraph
@@ -293,6 +504,42 @@ Once a profile has loaded, the main view is split into two: the top area is the 
 * `p`: Go to previous profile/thread if one is available
 * `t`: Open the profile/thread selector if available
 * `Cmd+F`/`Ctrl+F`: to open search. While open, `Enter` and `Shift+Enter` cycle through results
+
+## 📋 Quick Reference
+
+### Essential Commands
+```bash
+# Clone and setup
+git clone https://github.com/whbernard/speedscope.git
+cd speedscope
+npm install
+
+# Development
+npm run dev              # Web version (localhost:8000)
+npm run electron:dev     # Native desktop version
+
+# Production builds
+npm run build            # Web build
+npm run electron:build   # Native desktop build
+
+# CLI usage
+npm install -g speedscope
+speedscope /path/to/profile
+```
+
+### Key Files
+- `config.json` - OAuth and LLM service configuration
+- `main.js` - Electron main process with HTTP adapters
+- `preload.js` - Electron preload script for secure API exposure
+- `src/services/` - TypeScript service adapters
+- `src/views/application.tsx` - Main application component
+
+### Platform Requirements
+- **All platforms**: Node.js 18+
+- **Native builds**: Electron (included in dependencies)
+- **macOS**: Xcode Command Line Tools
+- **Windows**: Visual Studio Build Tools
+- **Linux**: WebKit2GTK and build tools
 
 ## Contributing
 

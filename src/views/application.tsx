@@ -18,9 +18,9 @@ import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
-import {getOAuthUrl, getLLMUrl} from '../config/api-config'
-import {OAuthService} from '../services/oauth-service'
-import {LLMService} from '../services/llm-service'
+import {getLLMUrl} from '../config/api-config'
+import {HttpService} from '../services/adapters'
+import {AnalysisService} from '../services/analysis-service'
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -323,8 +323,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
   loadExample = () => {
     this.loadProfile(async () => {
       const filename = 'perf-vertx-stacks-01-collapsed-all.txt'
-      const data = await fetch(exampleProfileURL).then(resp => resp.text())
-      return await importProfilesFromText(filename, data)
+      // Use Electron HTTP service instead of browser fetch
+      const response = await HttpService.get(exampleProfileURL)
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(`Failed to load example profile: ${response.status} ${response.statusText}`)
+      }
+      return await importProfilesFromText(filename, response.body)
     })
   }
 
@@ -688,57 +692,32 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           'Content-Type': 'application/json',
         }
 
-        // Use OAuthService to get access token
-        let accessToken: string
-        try {
-          const oauthToken = await OAuthService.getToken({
-            endpoint: oauthConfig.oauthUrl,
-            clientId: oauthConfig.clientId,
-            clientSecret: oauthConfig.clientSecret,
-            scope: 'api', // Default scope for LLM API access
-            provider: oauthConfig.provider,
-          })
-          
-          accessToken = oauthToken.accessToken
-          
-          if (!accessToken) {
-            throw new Error('No access token received from OAuth server')
-          }
-        } catch (oauthError) {
-          console.error('OAuth error:', oauthError)
-          const errorMessage =
-            oauthError instanceof Error ? oauthError.message : 'Unknown OAuth error'
-
-          // Hide loading screen and return to interval selector
-          this.setState({
-            showLoadingScreen: false,
-            showIntervalSelector: true,
-          })
-
-          alert(
-            `Authentication failed: ${errorMessage}\n\nPlease check your credentials and authentication endpoint.`,
-          )
-          return
-        }
-
-        authHeaders['Authorization'] = `Bearer ${accessToken}`
-
         // Use the prompt from the interval selector or default
         const finalPrompt =
           analysisPrompt || 'Identify performance bottlenecks in this profile data'
 
-        // Use LLMService to send prompt
+        // Use AnalysisService to handle both OAuth and LLM calls
         this.setState({loadingMessage: 'Sending to API...'})
         
         try {
-          const llmService = new LLMService({
-            endpoint: llmEndpoint,
-            provider: llmConfig.provider || 'bedrockClaudeSonnet',
+          const analysisResponse = await AnalysisService.analyzeProfile({
+            prompt: finalPrompt,
+            profileData: jsonData,
+            oauthCredentials: {
+              endpoint: oauthConfig.oauthUrl,
+              clientId: oauthConfig.clientId,
+              clientSecret: oauthConfig.clientSecret,
+              scope: oauthConfig.scope || 'api',
+              grantType: oauthConfig.grantType || 'client_credentials',
+              provider: oauthConfig.provider,
+            },
+            llmConfig: {
+              endpoint: llmEndpoint,
+              provider: llmConfig.provider || 'bedrockClaudeSonnet',
+              maxTokens: 2000,
+              temperature: 0.7,
+            },
           })
-
-          const prompt = `You are a performance analysis expert. Analyze the provided profiling data and provide insights, recommendations, and actionable improvements.\n\n${finalPrompt}\n\nProfile data:\n${jsonData}`
-          
-          const llmResponse = await llmService.sendPrompt(prompt, jsonData, accessToken)
 
           // Hide loading screen
           this.setState({showLoadingScreen: false})
@@ -747,12 +726,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           alert(
             `API Analysis for interval ${activeProfile.formatValue(
               startValue,
-            )} - ${activeProfile.formatValue(endValue)}:\n\n${llmResponse}`,
+            )} - ${activeProfile.formatValue(endValue)}:\n\n${analysisResponse.content}`,
           )
-        } catch (llmError) {
-          console.error('LLM error:', llmError)
+        } catch (error) {
+          console.error('Analysis error:', error)
           const errorMessage =
-            llmError instanceof Error ? llmError.message : 'Unknown LLM error'
+            error instanceof Error ? error.message : 'Unknown error'
 
           // Hide loading screen and return to interval selector
           this.setState({
@@ -842,12 +821,17 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         return
       }
       this.loadProfile(async () => {
-        const response: Response = await fetch(profileURL)
+        // Use Electron HTTP service for binary data instead of browser fetch
+        const response = await HttpService.getBinary(profileURL)
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(`Failed to load profile from URL: ${response.status} ${response.statusText}`)
+        }
         let filename = new URL(profileURL, window.location.href).pathname
         if (filename.includes('/')) {
           filename = filename.slice(filename.lastIndexOf('/') + 1)
         }
-        return await importProfilesFromArrayBuffer(filename, await response.arrayBuffer())
+        const arrayBuffer = HttpService.binaryResponseToArrayBuffer(response)
+        return await importProfilesFromArrayBuffer(filename, arrayBuffer)
       })
     } else if (this.props.hashParams.localProfilePath) {
       // There isn't good cross-browser support for XHR of local files, even from

@@ -1,0 +1,32 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#1E40AF" stroke="#1E3A8A" stroke-width="8"/>
+  
+  <!-- Microscope base (simple rectangle) -->
+  <rect x="180" y="380" width="152" height="24" rx="12" fill="#FFFFFF"/>
+  
+  <!-- Microscope arm (vertical) -->
+  <rect x="240" y="200" width="16" height="180" fill="#FFFFFF"/>
+  
+  <!-- Microscope head (horizontal tube) -->
+  <rect x="200" y="190" width="120" height="20" rx="10" fill="#FFFFFF"/>
+  
+  <!-- Objective lens (front) -->
+  <circle cx="200" cy="200" r="16" fill="#1E40AF"/>
+  <circle cx="200" cy="200" r="12" fill="#3B82F6"/>
+  <circle cx="200" cy="200" r="8" fill="#60A5FA"/>
+  <circle cx="200" cy="200" r="4" fill="#93C5FD"/>
+  
+  <!-- Eyepiece (back) -->
+  <circle cx="320" cy="200" r="12" fill="#FFFFFF"/>
+  <circle cx="320" cy="200" r="8" fill="#1E40AF"/>
+  <circle cx="320" cy="200" r="4" fill="#3B82F6"/>
+  
+  <!-- Stage platform -->
+  <rect x="160" y="250" width="160" height="8" rx="4" fill="#FFFFFF"/>
+  
+  <!-- Light rays (simple) -->
+  <path d="M 256 320 Q 256 300 256 280" stroke="#60A5FA" stroke-width="4" fill="none" opacity="0.8"/>
+  <path d="M 240 320 Q 240 300 240 280" stroke="#60A5FA" stroke-width="3" fill="none" opacity="0.6"/>
+  <path d="M 272 320 Q 272 300 272 280" stroke="#60A5FA" stroke-width="3" fill="none" opacity="0.6"/>
+</svg>

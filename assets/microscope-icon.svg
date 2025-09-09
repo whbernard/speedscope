@@ -1,0 +1,53 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Microscope base -->
+  <rect x="200" y="400" width="112" height="20" rx="10" fill="#4A5568"/>
+  
+  <!-- Microscope arm -->
+  <rect x="240" y="200" width="8" height="200" fill="#2D3748"/>
+  
+  <!-- Microscope head -->
+  <ellipse cx="244" cy="200" rx="60" ry="30" fill="#E2E8F0" stroke="#4A5568" stroke-width="3"/>
+  
+  <!-- Objective lens -->
+  <circle cx="244" cy="200" r="25" fill="#1A202C" stroke="#2D3748" stroke-width="2"/>
+  <circle cx="244" cy="200" r="20" fill="#2B6CB0"/>
+  <circle cx="244" cy="200" r="15" fill="#3182CE"/>
+  <circle cx="244" cy="200" r="10" fill="#63B3ED"/>
+  <circle cx="244" cy="200" r="5" fill="#90CDF4"/>
+  
+  <!-- Eyepiece -->
+  <rect x="300" y="180" width="40" height="40" rx="20" fill="#4A5568"/>
+  <rect x="305" y="185" width="30" height="30" rx="15" fill="#2D3748"/>
+  <rect x="310" y="190" width="20" height="20" rx="10" fill="#1A202C"/>
+  
+  <!-- Stage -->
+  <rect x="180" y="250" width="128" height="8" rx="4" fill="#718096"/>
+  <rect x="185" y="255" width="118" height="3" rx="1.5" fill="#A0AEC0"/>
+  
+  <!-- Stage clips -->
+  <rect x="175" y="245" width="8" height="18" rx="4" fill="#4A5568"/>
+  <rect x="329" y="245" width="8" height="18" rx="4" fill="#4A5568"/>
+  
+  <!-- Illuminator -->
+  <rect x="220" y="320" width="72" height="12" rx="6" fill="#2D3748"/>
+  <rect x="225" y="325" width="62" height="2" rx="1" fill="#63B3ED"/>
+  
+  <!-- Fine focus knob -->
+  <circle cx="180" y="200" r="15" fill="#4A5568" stroke="#2D3748" stroke-width="2"/>
+  <circle cx="180" y="200" r="10" fill="#718096"/>
+  <circle cx="180" y="200" r="5" fill="#A0AEC0"/>
+  
+  <!-- Coarse focus knob -->
+  <circle cx="160" y="220" r="12" fill="#4A5568" stroke="#2D3748" stroke-width="2"/>
+  <circle cx="160" y="220" r="8" fill="#718096"/>
+  <circle cx="160" y="220" r="4" fill="#A0AEC0"/>
+  
+  <!-- Light rays -->
+  <path d="M 244 320 Q 244 300 244 280" stroke="#63B3ED" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M 240 320 Q 240 300 240 280" stroke="#63B3ED" stroke-width="1" fill="none" opacity="0.4"/>
+  <path d="M 248 320 Q 248 300 248 280" stroke="#63B3ED" stroke-width="1" fill="none" opacity="0.4"/>
+  
+  <!-- Sample slide -->
+  <rect x="200" y="240" width="88" height="4" rx="2" fill="#E2E8F0" stroke="#A0AEC0" stroke-width="1"/>
+  <rect x="205" y="241" width="78" height="2" rx="1" fill="#F7FAFC"/>
+</svg>
