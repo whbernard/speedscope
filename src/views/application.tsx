@@ -1309,7 +1309,7 @@ const getStyle = withTheme(theme =>
       border: `1px solid ${theme.fgSecondaryColor}`,
       borderRadius: '4px',
       padding: '12px',
-      fontSize: FontSize.SMALL,
+      fontSize: FontSize.LABEL,
       color: theme.fgPrimaryColor,
       overflow: 'auto',
       maxHeight: '300px',
