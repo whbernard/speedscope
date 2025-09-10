@@ -41,6 +41,8 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
   const [llmProvider] = useState<'bedrockClaudeSonnet'>('bedrockClaudeSonnet')
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [hasCachedToken, setHasCachedToken] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewContent, setPreviewContent] = useState('')
 
   // Sample prompts for LLM analysis
   const samplePrompts = [
@@ -461,6 +463,16 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
   }
 
+  const handlePreview = () => {
+    try {
+      const textData = generateFilteredTextData()
+      setPreviewContent(textData)
+      setShowPreview(true)
+    } catch (error) {
+      alert('Error generating preview: ' + (error as Error).message)
+    }
+  }
+
   const handleConfirm = () => {
     if (!clientId || !clientSecret) {
       alert('Please fill in all authentication fields: Client ID and Client Secret')
@@ -488,6 +500,11 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     } catch (error) {
       alert('Error preparing data for LLM: ' + (error as Error).message)
     }
+  }
+
+  const handlePreviewConfirm = () => {
+    setShowPreview(false)
+    handleConfirm()
   }
 
   return (
@@ -622,10 +639,47 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
           <button className={css(style.button, style.cancelButton)} onClick={props.onCancel}>
             Cancel
           </button>
+          <button className={css(style.button, style.previewButton)} onClick={handlePreview}>
+            Preview
+          </button>
           <button className={css(style.button, style.confirmButton)} onClick={handleConfirm}>
             Send
           </button>
         </div>
+
+        {/* Preview Modal */}
+        {showPreview && (
+          <div className={css(style.previewOverlay)}>
+            <div className={css(style.previewModal)}>
+              <div className={css(style.previewHeader)}>
+                <h3>Preview: Content to be sent to LLM</h3>
+                <button
+                  className={css(style.previewCloseButton)}
+                  onClick={() => setShowPreview(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className={css(style.previewContent)}>
+                <pre>{previewContent}</pre>
+              </div>
+              <div className={css(style.previewActions)}>
+                <button
+                  className={css(style.button, style.cancelButton)}
+                  onClick={() => setShowPreview(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className={css(style.button, style.confirmButton)}
+                  onClick={handlePreviewConfirm}
+                >
+                  Send to LLM
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -879,6 +933,84 @@ const getStyle = withTheme(theme =>
       fontSize: FontSize.LABEL,
       color: theme.altFgPrimaryColor,
       fontWeight: 'bold',
+    },
+    previewButton: {
+      background: theme.bgSecondaryColor,
+      color: theme.fgPrimaryColor,
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      '&:hover': {
+        background: theme.fgSecondaryColor,
+        color: theme.bgPrimaryColor,
+      },
+    },
+    previewOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+    },
+    previewModal: {
+      background: theme.bgPrimaryColor,
+      borderRadius: '8px',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      width: '800px',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    previewHeader: {
+      padding: '20px 24px',
+      borderBottom: `1px solid ${theme.fgSecondaryColor}`,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      '& h3': {
+        margin: 0,
+        fontSize: '1.2em',
+        color: theme.fgPrimaryColor,
+        fontWeight: 'bold',
+      },
+    },
+    previewCloseButton: {
+      background: 'none',
+      border: 'none',
+      fontSize: '20px',
+      color: theme.fgPrimaryColor,
+      cursor: 'pointer',
+      padding: '4px',
+      borderRadius: '4px',
+      '&:hover': {
+        background: theme.fgSecondaryColor,
+        color: theme.bgPrimaryColor,
+      },
+    },
+    previewContent: {
+      padding: '24px',
+      overflow: 'auto',
+      flex: 1,
+      '& pre': {
+        margin: 0,
+        fontSize: FontSize.LABEL,
+        fontFamily: FontFamily.MONOSPACE,
+        color: theme.fgPrimaryColor,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        lineHeight: 1.4,
+      },
+    },
+    previewActions: {
+      padding: '16px 24px',
+      borderTop: `1px solid ${theme.fgSecondaryColor}`,
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '12px',
     },
   }),
 )
