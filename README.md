@@ -20,11 +20,6 @@ npm run dev
 # Open http://localhost:8000
 ```
 
-### 🚀 One-Line Setup
-```bash
-# Interactive menu
-git clone https://github.com/whbernard/speedscope.git && cd speedscope && npm install && ./run.sh
-```
 
 ## 📋 Requirements
 
@@ -44,6 +39,27 @@ npm run build          # Build for production
 # Distribution
 npm run electron:build # Create installers
 ```
+
+## 🖥️ Desktop setup by platform
+
+### macOS
+- Install Xcode Command Line Tools: `xcode-select --install`
+- Install Node.js LTS (18+) and npm
+- Run the app in dev: `npm run electron:dev`
+- Build a signed/notarized app (optional): set mac signing env or edit `electron-builder` config, then `npm run electron:build`
+
+### Windows
+- Install Node.js LTS (18+) and npm
+- Install Visual Studio Build Tools (Desktop development with C++) from Microsoft (required by some native deps)
+- Run the app in dev (PowerShell or CMD): `npm run electron:dev`
+- Build an installer: `npm run electron:build`
+
+### Linux (Debian/Ubuntu)
+- Install system deps:
+  - `sudo apt update && sudo apt install -y libgtk-3-0 libnss3 libxss1 libasound2 libxtst6 libx11-xcb1 gconf-service libgbm1`
+- Install Node.js LTS (18+) and npm
+- Run the app in dev: `npm run electron:dev`
+- Build packages: `npm run electron:build` (produces `.AppImage`/`.deb` depending on config)
 
 ### Version Comparison
 
@@ -65,9 +81,6 @@ Speedscope allows you to interactively explore profiling data to understand perf
 ## 💻 Command Line Usage
 
 ```bash
-# One-line setup with interactive menu
-git clone https://github.com/whbernard/speedscope.git && cd speedscope && npm install && ./run.sh
-
 # Or manually
 git clone https://github.com/whbernard/speedscope.git
 cd speedscope
@@ -100,6 +113,61 @@ npm run dev  # Use web version instead
 **Permission denied on Linux**
 ```bash
 sudo apt update && sudo apt install libwebkit2gtk-4.0-dev build-essential
+```
+
+### OAuth and LLM configuration (in code)
+
+Configure OAuth/LLM entirely in code via the adapter methods shown below. You control the OAuth `endpoint`, fields (`client_id_field`, `client_secret_field`, `grant_type`, `scope`), and TLS (custom CA or disabled verification). For LLM, provide the `endpoint`, headers, and `request_schema` with `{{profile_data}}` and `{{prompt}}` placeholders.
+
+---
+
+## 🔌 Where to modify adapters
+
+This app configures OAuth/LLM entirely in code. Adjust these files to change behavior:
+
+- `src/services/adapters.ts`
+  - `OAuthAdapter.requestToken(clientId, clientSecret, customConfig?)`
+    - Set/override: `endpoint`, `grant_type`, `scope`, `client_id_field`, `client_secret_field`
+    - TLS options (enable/disable CA verification):
+      - `tls.ca_pem` (string PEM), or `tls.ca_path` (path to PEM)
+      - `tls.disableCertValidation: boolean`
+  - `LLMAdapter.sendPrompt(prompt, profileData, accessToken?, customConfig?)`
+    - Provide: `endpoint`, `custom_headers`, and `request_schema`
+    - `request_schema.system[].text` and `messages[].content[].text` support `{{profile_data}}` and `{{prompt}}`
+
+- `main.js` (Electron backend)
+  - OAuth IPC handler: search for `ipcMain.handle('oauth-request'` to see required request fields and TLS handling
+  - LLM IPC handler: `ipcMain.handle('llm-request'` for how the payload is built and how `{{profile_data}}` is injected
+
+Example: pass TLS and fields via adapters
+
+```ts
+// OAuth
+await OAuthAdapter.requestToken(clientId, clientSecret, {
+  endpoint: 'https://oauth.example.com/token',
+  grant_type: 'client_credentials',
+  scope: 'api',
+  client_id_field: 'client_id',
+  client_secret_field: 'client_secret',
+  tls: {
+    // choose one of these:
+    // ca_pem: myCaPemString,
+    // ca_path: '/path/to/ca.pem',
+    // or disable verification for testing only
+    // disableCertValidation: true
+  }
+})
+
+// LLM
+await LLMAdapter.sendPrompt(prompt, profileData, accessToken, {
+  endpoint: 'https://api.anthropic.com/v1/messages',
+  custom_headers: { Authorization: 'Bearer {{ACCESS_TOKEN}}' },
+  request_schema: {
+    messages: [{ role: 'user', content: [{ text: '{{prompt}}' }] }],
+    system: [{ text: 'You are a performance analysis expert.\n\nProfile data:\n{{profile_data}}' }],
+    inferenceConfig: { maxTokens: 2000, temperature: 0.7, topP: 0.9, stopSequences: [] }
+  }
+})
 ```
 
 ---

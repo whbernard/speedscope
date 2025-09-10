@@ -4,6 +4,7 @@ const axios = require('axios')
 const keytar = require('keytar')
 const { v4: uuidv4 } = require('uuid')
 const fs = require('fs').promises
+const https = require('https')
 
 // Set the app name before app is ready
 app.setName('Speedscope with LLM')
@@ -27,71 +28,7 @@ app.setAboutPanelOptions({
 // Keep a global reference of the window object
 let mainWindow
 
-// Configuration
-let config = null
-
-// Load configuration
-async function loadConfig() {
-  try {
-    const configPath = path.join(__dirname, 'config.json')
-    const configData = await fs.readFile(configPath, 'utf8')
-    config = JSON.parse(configData)
-    console.log('Configuration loaded successfully')
-  } catch (error) {
-    console.error('Failed to load config.json:', error)
-    // Use default config if file doesn't exist
-    config = {
-      oauth: {
-        endpoint: "https://your-oauth-provider.com/oauth/token",
-        grant_type: "client_credentials",
-        scope: "api",
-        client_id_field: "client_id",
-        client_secret_field: "client_secret",
-        response_schema: {
-          access_token_field: "access_token",
-          expires_in_field: "expires_in",
-          token_type_field: "token_type"
-        }
-      },
-      llm: {
-        endpoint: "https://bedrock-runtime.us-east-1.amazonaws.com/model/anthropic.claude-3-sonnet-20240229-v1:0/invoke",
-        provider: "bedrockClaudeSonnet",
-        model: "anthropic.claude-3-sonnet-20240229-v1:0",
-        max_tokens: 2000,
-        temperature: 0.7,
-        custom_headers: {
-          "X-API-Key": "{{API_KEY}}",
-          "X-Custom-Header": "custom-value",
-          "Authorization": "Bearer {{ACCESS_TOKEN}}",
-          "X-Request-ID": "{{REQUEST_ID}}"
-        },
-        request_schema: {
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  text: "{{prompt}}"
-                }
-              ]
-            }
-          ],
-          system: [
-            {
-              text: "You are a performance analysis expert. Analyze the provided profiling data and provide insights about performance bottlenecks, optimization opportunities, and recommendations.\n\nProfile data:\n{{profile_data}}"
-            }
-          ],
-          inferenceConfig: {
-            maxTokens: 2000,
-            temperature: 0.7,
-            topP: 0.9,
-            stopSequences: []
-          }
-        }
-      }
-    }
-  }
-}
+// No external configuration; adapters must pass all options in requests
 
 // Replace template variables in strings
 function replaceTemplateVariables(text, variables) {
@@ -250,7 +187,6 @@ function createWindow() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  await loadConfig()
   createWindow()
 
   app.on('activate', () => {
@@ -271,7 +207,12 @@ app.on('window-all-closed', () => {
 // OAuth Request Handler
 ipcMain.handle('oauth-request', async (event, request) => {
   try {
-    if (!isAllowedUrl(request.endpoint)) {
+    // Resolve endpoint from request
+    const resolvedEndpoint = request.endpoint
+    if (!resolvedEndpoint) {
+      throw new Error('OAuth endpoint not configured')
+    }
+    if (!isAllowedUrl(resolvedEndpoint)) {
       throw new Error('URL not allowed for security reasons')
     }
 
@@ -279,18 +220,54 @@ ipcMain.handle('oauth-request', async (event, request) => {
       throw new Error('Rate limit exceeded')
     }
 
-    const payload = {
-      [config.oauth.client_id_field]: request.client_id,
-      [config.oauth.client_secret_field]: request.client_secret,
-      grant_type: request.grant_type || config.oauth.grant_type,
-      scope: request.scope || config.oauth.scope
+    // Validate required request fields
+    const requiredFields = ['client_id_field', 'client_secret_field', 'grant_type', 'scope', 'client_id', 'client_secret']
+    for (const key of requiredFields) {
+      if (!request[key] || typeof request[key] !== 'string' || request[key].trim() === '') {
+        throw new Error(`OAuth request missing required field: ${key}`)
+      }
     }
 
-    const response = await axios.post(request.endpoint, payload, {
+    if (!request.client_id || !request.client_secret) {
+      throw new Error('OAuth request missing client_id or client_secret')
+    }
+
+    const payload = {
+      [request.client_id_field]: request.client_id,
+      [request.client_secret_field]: request.client_secret,
+      grant_type: request.grant_type,
+      scope: request.scope
+    }
+
+    // Prepare TLS/HTTPS options (simple: custom CA or disable validation)
+    let httpsAgent = undefined
+    if (request.tls) {
+      const tls = request.tls
+      let ca = undefined
+      if (tls.ca_pem) {
+        ca = tls.ca_pem
+      } else if (tls.ca_path) {
+        try {
+          const caPath = path.isAbsolute(tls.ca_path) ? tls.ca_path : path.join(__dirname, tls.ca_path)
+          ca = await fs.readFile(caPath)
+        } catch (e) {
+          console.warn('Failed to read OAuth CA from path:', e.message)
+        }
+      }
+      const disable = tls.disableCertValidation === true || tls.rejectUnauthorized === false
+      if (ca) {
+        httpsAgent = new https.Agent({ ca, rejectUnauthorized: !disable })
+      } else if (disable) {
+        httpsAgent = new https.Agent({ rejectUnauthorized: false })
+      }
+    }
+
+    const response = await axios.post(resolvedEndpoint, payload, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/json'
       },
-      timeout: 30000
+      timeout: 30000,
+      httpsAgent
     })
 
     const responseData = response.data
@@ -369,9 +346,6 @@ ipcMain.handle('llm-request', async (event, request) => {
           prompt: request.prompt,
           profile_data: request.profile_data,
           ACCESS_TOKEN: request.access_token || '',
-          API_KEY: process.env.API_KEY || '',
-          REQUEST_ID: uuidv4(),
-          LLM_API_KEY: process.env.LLM_API_KEY || '',
           AUTH_TOKEN: process.env.AUTH_TOKEN || '',
           USER_ID: process.env.USER_ID || ''
         })
@@ -389,31 +363,28 @@ ipcMain.handle('llm-request', async (event, request) => {
       timeout: 60000
     })
 
-    // Parse response based on provider
+    // Parse response generically
     let content = ''
     let usage = null
 
-    if (request.provider === 'bedrockClaudeSonnet') {
-      // Bedrock response format
-      const responseData = response.data
-      if (responseData.content && responseData.content.length > 0) {
-        content = responseData.content[0].text
-      }
-      if (responseData.usage) {
+    const rd = response.data
+    if (rd && Array.isArray(rd.content) && rd.content.length > 0 && typeof rd.content[0].text === 'string') {
+      content = rd.content[0].text
+      if (rd.usage) {
         usage = {
-          input_tokens: responseData.usage.inputTokens,
-          output_tokens: responseData.usage.outputTokens,
-          total_tokens: responseData.usage.inputTokens + responseData.usage.outputTokens
+          input_tokens: rd.usage.inputTokens ?? rd.usage.input_tokens ?? 0,
+          output_tokens: rd.usage.outputTokens ?? rd.usage.output_tokens ?? 0,
+          total_tokens: (rd.usage.inputTokens ?? rd.usage.input_tokens ?? 0) + (rd.usage.outputTokens ?? rd.usage.output_tokens ?? 0)
         }
       }
-    } else if (request.provider === 'anthropic') {
-      // Anthropic response format
-      content = response.data.content[0].text
-      usage = response.data.usage
+    } else if (rd && Array.isArray(rd.choices) && rd.choices[0]?.message?.content) {
+      content = rd.choices[0].message.content
+      usage = rd.usage ?? null
+    } else if (typeof rd === 'string') {
+      content = rd
     } else {
-      // OpenAI or other format
-      content = response.data.choices[0].message.content
-      usage = response.data.usage
+      content = JSON.stringify(rd)
+      usage = rd?.usage ?? null
     }
 
     return {
@@ -497,7 +468,4 @@ ipcMain.handle('delete-token', async (event, { service, account }) => {
   }
 })
 
-// Config handler
-ipcMain.handle('load-config', async () => {
-  return config
-})
+// No config handler; configuration is provided per request

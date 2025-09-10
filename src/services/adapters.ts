@@ -23,6 +23,14 @@ export interface OAuthRequest {
   client_secret: string
   grant_type?: string
   scope?: string
+  client_id_field?: string
+  client_secret_field?: string
+  tls?: {
+    ca_pem?: string
+    ca_path?: string
+    disableCertValidation?: boolean
+    rejectUnauthorized?: boolean
+  }
 }
 
 export interface OAuthResponse {
@@ -35,7 +43,6 @@ export interface OAuthResponse {
 // LLM Types
 export interface LLMRequest {
   endpoint: string
-  provider: string
   prompt: string
   profile_data: string
   access_token?: string
@@ -93,7 +100,7 @@ export interface HttpBinaryResponse {
 
 // OAuth Adapter
 export class OAuthAdapter {
-  // Hardcoded OAuth configuration
+  // Defaults (can be overridden per call)
   private static readonly OAUTH_ENDPOINT = 'https://api.example.com/oauth/token'
   private static readonly GRANT_TYPE = 'client_credentials'
   private static readonly SCOPE = 'api'
@@ -105,6 +112,9 @@ export class OAuthAdapter {
       endpoint?: string
       grant_type?: string
       scope?: string
+      client_id_field?: string
+      client_secret_field?: string
+      tls?: OAuthRequest['tls']
     }
   ): Promise<OAuthResponse> {
     if (!window.llmApi) {
@@ -112,11 +122,14 @@ export class OAuthAdapter {
     }
 
     const request: OAuthRequest = {
-      endpoint: this.OAUTH_ENDPOINT, // Use hardcoded endpoint
+      endpoint: customConfig?.endpoint || this.OAUTH_ENDPOINT,
       client_id: clientId,
       client_secret: clientSecret,
-      grant_type: this.GRANT_TYPE, // Use hardcoded grant type
-      scope: this.SCOPE // Use hardcoded scope
+      grant_type: customConfig?.grant_type || this.GRANT_TYPE,
+      scope: customConfig?.scope || this.SCOPE,
+      client_id_field: customConfig?.client_id_field || 'client_id',
+      client_secret_field: customConfig?.client_secret_field || 'client_secret',
+      tls: customConfig?.tls
     }
 
     return await window.llmApi.oauthRequest(request)
@@ -127,7 +140,6 @@ export class OAuthAdapter {
 export class LLMAdapter {
   // Hardcoded LLM configuration
   private static readonly LLM_ENDPOINT = 'https://api.anthropic.com/v1/messages'
-  private static readonly DEFAULT_PROVIDER = 'anthropic'
   private static readonly DEFAULT_MAX_TOKENS = 2000
   private static readonly DEFAULT_TEMPERATURE = 0.7
 
@@ -137,8 +149,6 @@ export class LLMAdapter {
     accessToken: string | undefined,
     customConfig?: {
       endpoint?: string
-      provider?: string
-      model?: string
       max_tokens?: number
       temperature?: number
       custom_headers?: Record<string, string>
@@ -149,16 +159,28 @@ export class LLMAdapter {
       throw new Error('Electron API not available')
     }
 
+    // Load default request schema and headers from config when not provided
+    let defaultRequestSchema: any | undefined
+    let defaultCustomHeaders: Record<string, string> | undefined
+    let defaultEndpoint: string | undefined
+    try {
+      const cfg = await window.llmApi.loadConfig()
+      defaultRequestSchema = cfg?.llm?.request_schema
+      defaultCustomHeaders = cfg?.llm?.custom_headers
+      defaultEndpoint = cfg?.llm?.endpoint
+    } catch {
+      // ignore config load errors, fall back to built-ins
+    }
+
     const request: LLMRequest = {
-      endpoint: this.LLM_ENDPOINT, // Use hardcoded endpoint
-      provider: this.DEFAULT_PROVIDER, // Use hardcoded provider
+      endpoint: customConfig?.endpoint || defaultEndpoint || this.LLM_ENDPOINT,
       prompt,
       profile_data: profileData,
       access_token: accessToken,
       max_tokens: this.DEFAULT_MAX_TOKENS, // Use hardcoded max tokens
       temperature: this.DEFAULT_TEMPERATURE, // Use hardcoded temperature
-      custom_headers: customConfig?.custom_headers,
-      request_schema: customConfig?.request_schema
+      custom_headers: customConfig?.custom_headers || defaultCustomHeaders,
+      request_schema: customConfig?.request_schema || defaultRequestSchema
     }
 
     return await window.llmApi.llmRequest(request)
