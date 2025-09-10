@@ -760,6 +760,12 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           const title = `API Analysis for interval ${activeProfile.formatValue(
             startValue,
           )} - ${activeProfile.formatValue(endValue)}`
+          
+          // Debug: Log the raw content and parsed HTML
+          console.log('Raw LLM response:', analysisResponse.content)
+          const parsedHtml = marked.parse(analysisResponse.content) as string
+          console.log('Parsed HTML:', parsedHtml)
+          
           this.showMarkdownModal(title, analysisResponse.content)
         } catch (error) {
           console.error('Analysis error:', error)
@@ -1153,6 +1159,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
               </div>
               <div
                 className={css(style.markdownContent, style.markdownStyles)}
+                data-markdown-content="true"
                 dangerouslySetInnerHTML={{
                   __html: marked.parse(this.state.markdownContent) as string,
                 }}
@@ -1460,163 +1467,183 @@ const getStyle = withTheme(theme =>
       whiteSpace: 'normal',
       wordWrap: 'break-word',
       overflowWrap: 'break-word',
+      // Reset any conflicting styles
+      '& *': {
+        boxSizing: 'border-box',
+      },
+      // Ensure proper font inheritance
+      fontFamily: 'inherit',
+      // Add a unique identifier for debugging
+      '&[data-markdown-content="true"]': {
+        // This ensures our styles take precedence
+        position: 'relative',
+        zIndex: 1,
+      },
     },
     markdownStyles: {
       selectors: {
-        // Headings with proper hierarchy
-        ' h1': {
-          fontSize: '32px',
-          fontWeight: 'bold',
-          marginTop: '32px',
-          marginBottom: '16px',
-          color: theme.fgPrimaryColor,
-          borderBottom: `3px solid ${theme.selectionPrimaryColor}`,
-          paddingBottom: '8px',
+        // Headings with proper hierarchy - increased specificity
+        '& h1': {
+          fontSize: '32px !important',
+          fontWeight: 'bold !important',
+          marginTop: '32px !important',
+          marginBottom: '16px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          borderBottom: `3px solid ${theme.selectionPrimaryColor} !important`,
+          paddingBottom: '8px !important',
+          fontFamily: 'inherit !important',
         },
-        ' h2': {
-          fontSize: '28px',
-          fontWeight: 'bold',
-          marginTop: '28px',
-          marginBottom: '14px',
-          color: theme.fgPrimaryColor,
-          borderBottom: `2px solid ${theme.fgSecondaryColor}`,
-          paddingBottom: '6px',
+        '& h2': {
+          fontSize: '28px !important',
+          fontWeight: 'bold !important',
+          marginTop: '28px !important',
+          marginBottom: '14px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          borderBottom: `2px solid ${theme.fgSecondaryColor} !important`,
+          paddingBottom: '6px !important',
+          fontFamily: 'inherit !important',
         },
-        ' h3': {
-          fontSize: '24px',
-          fontWeight: 'bold',
-          marginTop: '24px',
-          marginBottom: '12px',
-          color: theme.selectionPrimaryColor,
+        '& h3': {
+          fontSize: '24px !important',
+          fontWeight: 'bold !important',
+          marginTop: '24px !important',
+          marginBottom: '12px !important',
+          color: `${theme.selectionPrimaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
-        ' h4': {
-          fontSize: '20px',
-          fontWeight: 'bold',
-          marginTop: '20px',
-          marginBottom: '10px',
-          color: theme.fgPrimaryColor,
+        '& h4': {
+          fontSize: '20px !important',
+          fontWeight: 'bold !important',
+          marginTop: '20px !important',
+          marginBottom: '10px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
-        ' h5': {
-          fontSize: '18px',
-          fontWeight: 'bold',
-          marginTop: '18px',
-          marginBottom: '8px',
-          color: theme.fgPrimaryColor,
+        '& h5': {
+          fontSize: '18px !important',
+          fontWeight: 'bold !important',
+          marginTop: '18px !important',
+          marginBottom: '8px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
-        ' h6': {
-          fontSize: '16px',
-          fontWeight: 'bold',
-          marginTop: '16px',
-          marginBottom: '8px',
-          color: theme.fgSecondaryColor,
+        '& h6': {
+          fontSize: '16px !important',
+          fontWeight: 'bold !important',
+          marginTop: '16px !important',
+          marginBottom: '8px !important',
+          color: `${theme.fgSecondaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
         // Paragraphs and text
-        ' p': {
-          fontSize: '16px',
-          lineHeight: 1.6,
-          marginBottom: '16px',
-          color: theme.fgPrimaryColor,
+        '& p': {
+          fontSize: '16px !important',
+          lineHeight: '1.6 !important',
+          marginBottom: '16px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
-        ' ul, ol': {
-          marginBottom: '16px',
-          paddingLeft: '24px',
+        '& ul, & ol': {
+          marginBottom: '16px !important',
+          paddingLeft: '24px !important',
         },
-        ' li': {
-          fontSize: '16px',
-          lineHeight: 1.5,
-          marginBottom: '4px',
-          color: theme.fgPrimaryColor,
+        '& li': {
+          fontSize: '16px !important',
+          lineHeight: '1.5 !important',
+          marginBottom: '4px !important',
+          color: `${theme.fgPrimaryColor} !important`,
+          fontFamily: 'inherit !important',
         },
-        ' strong, b': {
-          fontWeight: 'bold',
-          color: theme.fgPrimaryColor,
+        '& strong, & b': {
+          fontWeight: 'bold !important',
+          color: `${theme.fgPrimaryColor} !important`,
         },
-        ' em, i': {
-          fontStyle: 'italic',
-          color: theme.fgPrimaryColor,
+        '& em, & i': {
+          fontStyle: 'italic !important',
+          color: `${theme.fgPrimaryColor} !important`,
         },
-        // Code blocks - very distinct styling
-        ' .code-block': {
-          backgroundColor: '#1e1e1e',
-          color: '#d4d4d4',
-          padding: '16px',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          border: `2px solid ${theme.selectionPrimaryColor}`,
-          overflow: 'auto',
-          fontSize: '14px',
-          lineHeight: 1.4,
-          fontFamily: FontFamily.MONOSPACE,
-          whiteSpace: 'pre',
-          wordWrap: 'normal',
-          overflowWrap: 'normal',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        // Code blocks - very distinct styling with high specificity
+        '& .code-block': {
+          backgroundColor: '#1e1e1e !important',
+          color: '#d4d4d4 !important',
+          padding: '16px !important',
+          borderRadius: '8px !important',
+          marginBottom: '16px !important',
+          border: `2px solid ${theme.selectionPrimaryColor} !important`,
+          overflow: 'auto !important',
+          fontSize: '14px !important',
+          lineHeight: '1.4 !important',
+          fontFamily: `${FontFamily.MONOSPACE} !important`,
+          whiteSpace: 'pre !important',
+          wordWrap: 'normal !important',
+          overflowWrap: 'normal !important',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3) !important',
         },
-        ' .code-block code': {
-          backgroundColor: 'transparent',
-          color: '#d4d4d4',
-          padding: 0,
-          border: 'none',
-          fontSize: '14px',
-          fontFamily: FontFamily.MONOSPACE,
-          whiteSpace: 'pre',
-          wordWrap: 'normal',
-          overflowWrap: 'normal',
+        '& .code-block code': {
+          backgroundColor: 'transparent !important',
+          color: '#d4d4d4 !important',
+          padding: '0 !important',
+          border: 'none !important',
+          fontSize: '14px !important',
+          fontFamily: `${FontFamily.MONOSPACE} !important`,
+          whiteSpace: 'pre !important',
+          wordWrap: 'normal !important',
+          overflowWrap: 'normal !important',
         },
         // Inline code - clearly different from code blocks
-        ' .inline-code': {
-          backgroundColor: theme.bgSecondaryColor,
-          color: theme.fgPrimaryColor,
-          padding: '2px 6px',
-          borderRadius: '4px',
-          fontFamily: FontFamily.MONOSPACE,
-          fontSize: '14px',
-          border: `1px solid ${theme.fgSecondaryColor}`,
-          fontWeight: '500',
+        '& .inline-code': {
+          backgroundColor: `${theme.bgSecondaryColor} !important`,
+          color: `${theme.fgPrimaryColor} !important`,
+          padding: '2px 6px !important',
+          borderRadius: '4px !important',
+          fontFamily: `${FontFamily.MONOSPACE} !important`,
+          fontSize: '14px !important',
+          border: `1px solid ${theme.fgSecondaryColor} !important`,
+          fontWeight: '500 !important',
         },
         // Blockquotes
-        ' blockquote': {
-          borderLeft: `4px solid ${theme.selectionPrimaryColor}`,
-          paddingLeft: '16px',
-          marginLeft: 0,
-          marginBottom: '16px',
-          fontStyle: 'italic',
-          color: theme.fgSecondaryColor,
-          backgroundColor: theme.bgSecondaryColor,
-          padding: '12px 16px',
-          borderRadius: '4px',
+        '& blockquote': {
+          borderLeft: `4px solid ${theme.selectionPrimaryColor} !important`,
+          paddingLeft: '16px !important',
+          marginLeft: '0 !important',
+          marginBottom: '16px !important',
+          fontStyle: 'italic !important',
+          color: `${theme.fgSecondaryColor} !important`,
+          backgroundColor: `${theme.bgSecondaryColor} !important`,
+          padding: '12px 16px !important',
+          borderRadius: '4px !important',
         },
         // Tables
-        ' table': {
-          borderCollapse: 'collapse',
-          width: '100%',
-          marginBottom: '16px',
-          border: `1px solid ${theme.fgSecondaryColor}`,
+        '& table': {
+          borderCollapse: 'collapse !important',
+          width: '100% !important',
+          marginBottom: '16px !important',
+          border: `1px solid ${theme.fgSecondaryColor} !important`,
         },
-        ' th, td': {
-          border: `1px solid ${theme.fgSecondaryColor}`,
-          padding: '8px 12px',
-          textAlign: 'left',
-          fontSize: '14px',
+        '& th, & td': {
+          border: `1px solid ${theme.fgSecondaryColor} !important`,
+          padding: '8px 12px !important',
+          textAlign: 'left !important',
+          fontSize: '14px !important',
         },
-        ' th': {
-          backgroundColor: theme.bgSecondaryColor,
-          fontWeight: 'bold',
-          color: theme.fgPrimaryColor,
+        '& th': {
+          backgroundColor: `${theme.bgSecondaryColor} !important`,
+          fontWeight: 'bold !important',
+          color: `${theme.fgPrimaryColor} !important`,
         },
         // Links
-        ' a': {
-          color: theme.selectionPrimaryColor,
-          textDecoration: 'underline',
+        '& a': {
+          color: `${theme.selectionPrimaryColor} !important`,
+          textDecoration: 'underline !important',
         },
-        ' a:hover': {
-          color: theme.fgPrimaryColor,
+        '& a:hover': {
+          color: `${theme.fgPrimaryColor} !important`,
         },
         // Horizontal rules
-        ' hr': {
-          border: 'none',
-          borderTop: `2px solid ${theme.fgSecondaryColor}`,
-          margin: '20px 0',
+        '& hr': {
+          border: 'none !important',
+          borderTop: `2px solid ${theme.fgSecondaryColor} !important`,
+          margin: '20px 0 !important',
         },
       },
     },
