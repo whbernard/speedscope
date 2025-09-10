@@ -18,7 +18,6 @@ import {Theme, withTheme} from './themes/theme'
 import {ViewMode} from '../lib/view-mode'
 import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
-import {getLLMUrl} from '../config/api-config'
 import {HttpService} from '../services/adapters'
 import {AnalysisService} from '../services/analysis-service'
 import {HashParams} from '../lib/hash-params'
@@ -687,7 +686,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         const activeProfile = this.props.activeProfileState.profile
 
         // Get configurations from the interval selector
-        const llmEndpoint = getLLMUrl(llmConfig?.provider || 'bedrockClaudeSonnet')
+        const llmEndpoint = llmConfig?.endpoint || 'https://api.anthropic.com/v1/messages'
         let authHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
         }
@@ -709,11 +708,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
               clientSecret: oauthConfig.clientSecret,
               scope: oauthConfig.scope || 'api',
               grantType: oauthConfig.grantType || 'client_credentials',
-              provider: oauthConfig.provider,
             },
             llmConfig: {
               endpoint: llmEndpoint,
-              provider: llmConfig.provider || 'bedrockClaudeSonnet',
               maxTokens: 2000,
               temperature: 0.7,
             },
