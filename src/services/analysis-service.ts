@@ -46,29 +46,4 @@ export class AnalysisService {
 
     return llmResponse
   }
-
-  /**
-   * Convenience method for simple analysis with hardcoded configurations
-   */
-  static async quickAnalysis(
-    prompt: string,
-    profileData: string,
-    clientId: string,
-    clientSecret: string,
-  ): Promise<string> {
-    const response = await this.analyzeProfile({
-      prompt,
-      profileData,
-      oauthCredentials: {
-        clientId,
-        clientSecret,
-        // endpoint, grantType, and scope are now hardcoded in OAuthAdapter
-      },
-      llmConfig: {
-        // endpoint, provider, maxTokens, and temperature are now hardcoded in LLMAdapter
-      },
-    })
-
-    return response.content
-  }
 }
