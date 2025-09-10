@@ -178,6 +178,11 @@ interface ApplicationState {
   selectedEndValue: number
   showLoadingScreen: boolean
   loadingMessage: string
+  showErrorModal: boolean
+  errorDetails: {
+    message: string
+    requestPayload?: any
+  } | null
 }
 
 export class Application extends Component<ApplicationProps, ApplicationState> {
@@ -189,6 +194,8 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
       selectedEndValue: 0,
       showLoadingScreen: false,
       loadingMessage: '',
+      showErrorModal: false,
+      errorDetails: null,
     }
   }
 
@@ -733,9 +740,8 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             showIntervalSelector: true,
           })
 
-          alert(
-            `Failed to get API analysis: ${errorMessage}\n\nPlease check your credentials and endpoint configuration.`,
-          )
+          // Show error modal with full details
+          this.showErrorModal(error instanceof Error ? error : new Error(errorMessage))
         }
       } catch (error) {
         // Hide loading screen and return to interval selector
@@ -756,6 +762,23 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     this.setState({
       showIntervalSelector: false,
       showLoadingScreen: false,
+    })
+  }
+
+  private showErrorModal = (error: Error) => {
+    this.setState({
+      showErrorModal: true,
+      errorDetails: {
+        message: error.message,
+        requestPayload: (error as any).requestPayload,
+      },
+    })
+  }
+
+  private hideErrorModal = () => {
+    this.setState({
+      showErrorModal: false,
+      errorDetails: null,
     })
   }
 
@@ -1033,6 +1056,36 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             </div>
           </div>
         )}
+        {this.state.showErrorModal && this.state.errorDetails && (
+          <div className={css(style.errorOverlay)}>
+            <div className={css(style.errorModal)}>
+              <div className={css(style.errorHeader)}>
+                <h3>Request Failed</h3>
+                <button className={css(style.closeButton)} onClick={this.hideErrorModal}>
+                  ✕
+                </button>
+              </div>
+              <div className={css(style.errorContent)}>
+                <div className={css(style.errorMessage)}>
+                  <strong>Error:</strong> {this.state.errorDetails.message}
+                </div>
+                {this.state.errorDetails.requestPayload && (
+                  <div className={css(style.errorPayload)}>
+                    <strong>Request Payload:</strong>
+                    <pre className={css(style.jsonPayload)}>
+                      {JSON.stringify(this.state.errorDetails.requestPayload, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              <div className={css(style.errorActions)}>
+                <button className={css(style.errorButton)} onClick={this.hideErrorModal}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1194,6 +1247,93 @@ const getStyle = withTheme(theme =>
     loadingSubtext: {
       fontSize: FontSize.LABEL,
       color: theme.fgSecondaryColor,
+    },
+    errorOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1001,
+    },
+    errorModal: {
+      backgroundColor: theme.bgPrimaryColor,
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      borderRadius: 8,
+      padding: 0,
+      minWidth: 500,
+      maxWidth: '80vw',
+      maxHeight: '80vh',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    errorHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '16px 24px',
+      borderBottom: `1px solid ${theme.fgSecondaryColor}`,
+    },
+    closeButton: {
+      background: 'none',
+      border: 'none',
+      color: theme.fgPrimaryColor,
+      fontSize: '18px',
+      cursor: 'pointer',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      ':hover': {
+        backgroundColor: theme.fgSecondaryColor,
+      },
+    },
+    errorContent: {
+      padding: '24px',
+      flex: 1,
+      overflow: 'auto',
+    },
+    errorMessage: {
+      marginBottom: '16px',
+      fontSize: FontSize.LABEL,
+      color: theme.fgPrimaryColor,
+    },
+    errorPayload: {
+      marginTop: '16px',
+    },
+    jsonPayload: {
+      backgroundColor: theme.bgSecondaryColor,
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      borderRadius: '4px',
+      padding: '12px',
+      fontSize: FontSize.SMALL,
+      color: theme.fgPrimaryColor,
+      overflow: 'auto',
+      maxHeight: '300px',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+    },
+    errorActions: {
+      padding: '16px 24px',
+      borderTop: `1px solid ${theme.fgSecondaryColor}`,
+      display: 'flex',
+      justifyContent: 'flex-end',
+    },
+    errorButton: {
+      background: theme.selectionPrimaryColor,
+      color: theme.altFgPrimaryColor,
+      border: 'none',
+      borderRadius: '4px',
+      padding: '8px 16px',
+      fontSize: FontSize.LABEL,
+      cursor: 'pointer',
+      transition: `all ${Duration.HOVER_CHANGE} ease-in`,
+      ':hover': {
+        background: theme.selectionSecondaryColor,
+      },
     },
   }),
 )

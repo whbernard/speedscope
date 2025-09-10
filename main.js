@@ -278,7 +278,18 @@ ipcMain.handle('oauth-request', async (event, request) => {
     }
   } catch (error) {
     console.error('OAuth request failed:', error)
-    throw new Error(`OAuth request failed: ${error.message}`)
+    const errorWithPayload = new Error(`OAuth request failed: ${error.message}`)
+    errorWithPayload.requestPayload = {
+      endpoint: request.endpoint,
+      client_id_field: request.client_id_field,
+      client_secret_field: request.client_secret_field,
+      grant_type: request.grant_type,
+      scope: request.scope,
+      client_id: request.client_id,
+      client_secret: request.client_secret,
+      tls: request.tls
+    }
+    throw errorWithPayload
   }
 })
 
@@ -393,7 +404,18 @@ ipcMain.handle('llm-request', async (event, request) => {
     }
   } catch (error) {
     console.error('LLM request failed:', error)
-    throw new Error(`LLM request failed: ${error.message}`)
+    const errorWithPayload = new Error(`LLM request failed: ${error.message}`)
+    errorWithPayload.requestPayload = {
+      endpoint: request.endpoint,
+      prompt: request.prompt,
+      profile_data: request.profile_data,
+      access_token: request.access_token,
+      max_tokens: request.max_tokens,
+      temperature: request.temperature,
+      custom_headers: request.custom_headers,
+      request_schema: request.request_schema
+    }
+    throw errorWithPayload
   }
 })
 
@@ -433,7 +455,15 @@ ipcMain.handle('http-request', async (event, request) => {
     }
   } catch (error) {
     console.error('HTTP request failed:', error)
-    throw new Error(`HTTP request failed: ${error.message}`)
+    const errorWithPayload = new Error(`HTTP request failed: ${error.message}`)
+    errorWithPayload.requestPayload = {
+      method: request.method || 'GET',
+      url: request.url,
+      body: request.body,
+      headers: request.headers || {},
+      binary: request.binary
+    }
+    throw errorWithPayload
   }
 })
 
