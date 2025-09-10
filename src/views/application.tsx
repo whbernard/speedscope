@@ -1103,7 +1103,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
                 </button>
               </div>
               <div
-                className={css(style.markdownContent)}
+                className={css(style.markdownContent, style.markdownStyles)}
                 dangerouslySetInnerHTML={{
                   __html: marked.parse(this.state.markdownContent) as string,
                 }}
@@ -1408,63 +1408,89 @@ const getStyle = withTheme(theme =>
       fontSize: FontSize.LABEL,
       lineHeight: 1.6,
       color: theme.fgPrimaryColor,
-      '& h1, & h2, & h3, & h4, & h5, & h6': {
-        marginTop: '24px',
-        marginBottom: '12px',
-        color: theme.fgPrimaryColor,
-      },
-      '& h1': {fontSize: '1.5em'},
-      '& h2': {fontSize: '1.3em'},
-      '& h3': {fontSize: '1.1em'},
-      '& p': {
-        marginBottom: '12px',
-      },
-      '& ul, & ol': {
-        marginBottom: '12px',
-        paddingLeft: '24px',
-      },
-      '& li': {
-        marginBottom: '4px',
-      },
-      '& code': {
-        backgroundColor: theme.bgSecondaryColor,
-        padding: '2px 4px',
-        borderRadius: '3px',
-        fontFamily: FontFamily.MONOSPACE,
-        fontSize: '0.9em',
-      },
-      '& pre': {
-        backgroundColor: theme.bgSecondaryColor,
-        padding: '12px',
-        borderRadius: '4px',
-        overflow: 'auto',
-        marginBottom: '12px',
-        '& code': {
+    },
+    markdownStyles: {
+      selectors: {
+        ' h1, h2, h3, h4, h5, h6': {
+          marginTop: '24px',
+          marginBottom: '12px',
+          color: theme.fgPrimaryColor,
+          fontWeight: 'bold',
+        },
+        ' h1': {
+          fontSize: '1.5em',
+        },
+        ' h2': {
+          fontSize: '1.3em',
+        },
+        ' h3': {
+          fontSize: '1.1em',
+        },
+        ' h4': {
+          fontSize: '1em',
+        },
+        ' h5': {
+          fontSize: '0.9em',
+        },
+        ' h6': {
+          fontSize: '0.8em',
+        },
+        ' p': {
+          marginBottom: '12px',
+        },
+        ' ul, ol': {
+          marginBottom: '12px',
+          paddingLeft: '24px',
+        },
+        ' li': {
+          marginBottom: '4px',
+        },
+        ' strong, b': {
+          fontWeight: 'bold',
+        },
+        ' em, i': {
+          fontStyle: 'italic',
+        },
+        ' code': {
+          backgroundColor: theme.bgSecondaryColor,
+          padding: '2px 4px',
+          borderRadius: '3px',
+          fontFamily: FontFamily.MONOSPACE,
+          fontSize: '0.9em',
+        },
+        ' pre': {
+          backgroundColor: theme.bgSecondaryColor,
+          padding: '12px',
+          borderRadius: '4px',
+          overflow: 'auto',
+          marginBottom: '12px',
+        },
+        ' pre code': {
           backgroundColor: 'transparent',
           padding: 0,
         },
-      },
-      '& blockquote': {
-        borderLeft: `4px solid ${theme.fgSecondaryColor}`,
-        paddingLeft: '16px',
-        marginLeft: 0,
-        marginBottom: '12px',
-        fontStyle: 'italic',
-        color: theme.fgSecondaryColor,
-      },
-      '& table': {
-        borderCollapse: 'collapse',
-        width: '100%',
-        marginBottom: '12px',
-      },
-      '& th, & td': {
-        border: `1px solid ${theme.fgSecondaryColor}`,
-        padding: '8px 12px',
-        textAlign: 'left',
-      },
-      '& th': {
-        backgroundColor: theme.bgSecondaryColor,
-        fontWeight: 'bold',
+        ' blockquote': {
+          borderLeft: `4px solid ${theme.fgSecondaryColor}`,
+          paddingLeft: '16px',
+          marginLeft: 0,
+          marginBottom: '12px',
+          fontStyle: 'italic',
+          color: theme.fgSecondaryColor,
+        },
+        ' table': {
+          borderCollapse: 'collapse',
+          width: '100%',
+          marginBottom: '12px',
+        },
+        ' th, td': {
+          border: `1px solid ${theme.fgSecondaryColor}`,
+          padding: '8px 12px',
+          textAlign: 'left',
+        },
+        ' th': {
+          backgroundColor: theme.bgSecondaryColor,
+          fontWeight: 'bold',
+        },
       },
     },
     markdownActions: {
