@@ -20,6 +20,7 @@ import {canUseXHR} from '../app-state'
 import {ProfileGroupState} from '../app-state/profile-group'
 import {HttpService} from '../services/adapters'
 import {AnalysisService} from '../services/analysis-service'
+import {marked} from 'marked'
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -183,6 +184,9 @@ interface ApplicationState {
     message: string
     requestPayload?: any
   } | null
+  showMarkdownModal: boolean
+  markdownContent: string
+  markdownTitle: string
 }
 
 export class Application extends Component<ApplicationProps, ApplicationState> {
@@ -196,6 +200,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
       loadingMessage: '',
       showErrorModal: false,
       errorDetails: null,
+      showMarkdownModal: false,
+      markdownContent: '',
+      markdownTitle: '',
     }
   }
 
@@ -709,12 +716,11 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           // Hide loading screen
           this.setState({showLoadingScreen: false})
 
-          // Show API analysis in a more detailed alert
-          alert(
-            `API Analysis for interval ${activeProfile.formatValue(
-              startValue,
-            )} - ${activeProfile.formatValue(endValue)}:\n\n${analysisResponse.content}`,
-          )
+          // Show API analysis in markdown modal
+          const title = `API Analysis for interval ${activeProfile.formatValue(
+            startValue,
+          )} - ${activeProfile.formatValue(endValue)}`
+          this.showMarkdownModal(title, analysisResponse.content)
         } catch (error) {
           console.error('Analysis error:', error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -764,6 +770,22 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     this.setState({
       showErrorModal: false,
       errorDetails: null,
+    })
+  }
+
+  private showMarkdownModal = (title: string, content: string) => {
+    this.setState({
+      showMarkdownModal: true,
+      markdownTitle: title,
+      markdownContent: content,
+    })
+  }
+
+  private hideMarkdownModal = () => {
+    this.setState({
+      showMarkdownModal: false,
+      markdownContent: '',
+      markdownTitle: '',
     })
   }
 
@@ -1071,6 +1093,29 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             </div>
           </div>
         )}
+        {this.state.showMarkdownModal && (
+          <div className={css(style.markdownOverlay)}>
+            <div className={css(style.markdownModal)}>
+              <div className={css(style.markdownHeader)}>
+                <h3>{this.state.markdownTitle}</h3>
+                <button className={css(style.closeButton)} onClick={this.hideMarkdownModal}>
+                  ✕
+                </button>
+              </div>
+              <div
+                className={css(style.markdownContent)}
+                dangerouslySetInnerHTML={{
+                  __html: marked.parse(this.state.markdownContent) as string,
+                }}
+              />
+              <div className={css(style.markdownActions)}>
+                <button className={css(style.markdownButton)} onClick={this.hideMarkdownModal}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -1308,6 +1353,127 @@ const getStyle = withTheme(theme =>
       justifyContent: 'flex-end',
     },
     errorButton: {
+      background: theme.selectionPrimaryColor,
+      color: theme.altFgPrimaryColor,
+      border: 'none',
+      borderRadius: '4px',
+      padding: '8px 16px',
+      fontSize: FontSize.LABEL,
+      cursor: 'pointer',
+      transition: `all ${Duration.HOVER_CHANGE} ease-in`,
+      ':hover': {
+        background: theme.selectionSecondaryColor,
+      },
+    },
+    markdownOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1002,
+    },
+    markdownModal: {
+      backgroundColor: theme.bgPrimaryColor,
+      border: `1px solid ${theme.fgSecondaryColor}`,
+      borderRadius: 8,
+      padding: 0,
+      minWidth: 600,
+      maxWidth: '90vw',
+      maxHeight: '90vh',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    markdownHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '16px 24px',
+      borderBottom: `1px solid ${theme.fgSecondaryColor}`,
+      '& h3': {
+        margin: 0,
+        fontSize: FontSize.LABEL,
+        fontWeight: 'bold',
+        color: theme.fgPrimaryColor,
+      },
+    },
+    markdownContent: {
+      padding: '24px',
+      overflow: 'auto',
+      flex: 1,
+      fontSize: FontSize.LABEL,
+      lineHeight: 1.6,
+      color: theme.fgPrimaryColor,
+      '& h1, & h2, & h3, & h4, & h5, & h6': {
+        marginTop: '24px',
+        marginBottom: '12px',
+        color: theme.fgPrimaryColor,
+      },
+      '& h1': {fontSize: '1.5em'},
+      '& h2': {fontSize: '1.3em'},
+      '& h3': {fontSize: '1.1em'},
+      '& p': {
+        marginBottom: '12px',
+      },
+      '& ul, & ol': {
+        marginBottom: '12px',
+        paddingLeft: '24px',
+      },
+      '& li': {
+        marginBottom: '4px',
+      },
+      '& code': {
+        backgroundColor: theme.bgSecondaryColor,
+        padding: '2px 4px',
+        borderRadius: '3px',
+        fontFamily: FontFamily.MONOSPACE,
+        fontSize: '0.9em',
+      },
+      '& pre': {
+        backgroundColor: theme.bgSecondaryColor,
+        padding: '12px',
+        borderRadius: '4px',
+        overflow: 'auto',
+        marginBottom: '12px',
+        '& code': {
+          backgroundColor: 'transparent',
+          padding: 0,
+        },
+      },
+      '& blockquote': {
+        borderLeft: `4px solid ${theme.fgSecondaryColor}`,
+        paddingLeft: '16px',
+        marginLeft: 0,
+        marginBottom: '12px',
+        fontStyle: 'italic',
+        color: theme.fgSecondaryColor,
+      },
+      '& table': {
+        borderCollapse: 'collapse',
+        width: '100%',
+        marginBottom: '12px',
+      },
+      '& th, & td': {
+        border: `1px solid ${theme.fgSecondaryColor}`,
+        padding: '8px 12px',
+        textAlign: 'left',
+      },
+      '& th': {
+        backgroundColor: theme.bgSecondaryColor,
+        fontWeight: 'bold',
+      },
+    },
+    markdownActions: {
+      padding: '16px 24px',
+      borderTop: `1px solid ${theme.fgSecondaryColor}`,
+      display: 'flex',
+      justifyContent: 'flex-end',
+    },
+    markdownButton: {
       background: theme.selectionPrimaryColor,
       color: theme.altFgPrimaryColor,
       border: 'none',
