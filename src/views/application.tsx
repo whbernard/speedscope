@@ -537,7 +537,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     endValue: number,
     oauthConfig: any,
     analysisPrompt?: string,
-    filteredJsonData?: string,
+    filteredTextData?: string,
   ) => {
     this.setState({
       showIntervalSelector: false,
@@ -548,19 +548,17 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     })
 
     if (this.props.profileGroup && this.props.activeProfileState) {
-      const {name} = this.props.profileGroup
-
       try {
-        let jsonData: string
+        let textData: string
 
-        if (filteredJsonData) {
-          // Use the pre-filtered JSON data from the preview
-          console.log('Using pre-filtered JSON data from preview')
+        if (filteredTextData) {
+          // Use the pre-filtered text data from the preview
+          console.log('Using pre-filtered text data from preview')
           this.setState({loadingMessage: 'Using filtered profile data...'})
-          jsonData = filteredJsonData
+          textData = filteredTextData
         } else {
-          // Fallback: generate the JSON data (this shouldn't happen with the new flow)
-          console.log('Fallback: generating JSON data from scratch')
+          // Fallback: generate the text data (this shouldn't happen with the new flow)
+          console.log('Fallback: generating text data from scratch')
           const activeProfile = this.props.activeProfileState.profile
 
           // Create frames mapping
@@ -662,34 +660,53 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             totalEvents: filteredEvents.length,
           })
 
-          const file = {
-            exporter: `speedscope@${require('../../package.json').version}`,
-            name: `${name} (${activeProfile.formatValue(startValue)} - ${activeProfile.formatValue(
-              endValue,
-            )})`,
-            activeProfileIndex: 0,
-            $schema: 'https://www.speedscope.app/file-format-schema.json',
-            shared: {frames},
-            profiles: [
-              {
-                type: 'evented',
-                name: activeProfile.getName(),
-                unit: activeProfile.getWeightUnit(),
-                startValue: profileStartValue,
-                endValue: profileEndValue,
-                events: filteredEvents,
-              },
-            ],
-          }
+          // Text generation with progress update
+          console.log('Starting text generation...')
+          this.setState({loadingMessage: 'Generating text format...'})
 
-          // JSON serialization with progress update
-          console.log('Starting JSON serialization...')
-          this.setState({loadingMessage: 'Serializing JSON...'})
-
-          jsonData = await new Promise<string>(resolve => {
+          textData = await new Promise<string>(resolve => {
             setTimeout(() => {
-              const result = JSON.stringify(file)
-              console.log(`JSON serialized, length: ${result.length}`)
+              // Build stack transitions and durations
+              const stack: number[] = []
+              const lines: string[] = []
+
+              // Symbol table
+              lines.push('# symbols')
+              for (let i = 0; i < frames.length; i++) {
+                lines.push(`${i}\t${frames[i].name}`)
+              }
+              lines.push('# frames are referenced by index from left (top) to right (bottom)')
+              lines.push('# stack [ top ... bottom ]\t<duration> (same units as profile)')
+
+              let prevTime = filteredEvents.length > 0 ? filteredEvents[0].at : startValue
+              for (const ev of filteredEvents) {
+                // On transition, emit previous stack with duration
+                const duration = ev.at - prevTime
+                if (duration > 0 && stack.length > 0) {
+                  const stackText = `[ ${stack.join(' ')} ]\t${duration}`
+                  lines.push(stackText)
+                }
+
+                // Apply event
+                if (ev.type === 'O') {
+                  // Push opened frame to top (leftmost)
+                  stack.unshift(ev.frame)
+                } else {
+                  // Close: remove the first occurrence from top (leftmost first)
+                  const idx = stack.indexOf(ev.frame)
+                  if (idx >= 0) stack.splice(idx, 1)
+                }
+                prevTime = ev.at
+              }
+
+              // Flush tail up to endValue if needed
+              const tailDuration = endValue - prevTime
+              if (tailDuration > 0 && stack.length > 0) {
+                lines.push(`[ ${stack.join(' ')} ]\t${tailDuration}`)
+              }
+
+              const result = lines.join('\n')
+              console.log(`Text generated, length: ${result.length}`)
               resolve(result)
             }, 0)
           })
@@ -708,7 +725,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         try {
           const analysisResponse = await AnalysisService.analyzeProfile({
             prompt: finalPrompt,
-            profileData: jsonData,
+            profileData: textData,
             clientId: oauthConfig.clientId,
             clientSecret: oauthConfig.clientSecret,
           })

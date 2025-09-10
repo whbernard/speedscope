@@ -372,21 +372,15 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
   }
 
-  const generateFilteredJsonData = () => {
+  const generateFilteredTextData = () => {
     try {
-      // Get the original profile data directly
-      const originalProfile = props.profile
-
-      // Create frames mapping
+      // Build frames table and event list for the full profile
       const frames: any[] = []
       const indexForFrame = new Map<any, number>()
-
       function getIndexForFrame(frame: any): number {
         let index = indexForFrame.get(frame)
         if (index == null) {
-          const serializedFrame: any = {
-            name: frame.name,
-          }
+          const serializedFrame: any = {name: frame.name}
           if (frame.file != null) serializedFrame.file = frame.file
           if (frame.line != null) serializedFrame.line = frame.line
           if (frame.col != null) serializedFrame.col = frame.col
@@ -397,57 +391,73 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
         return index
       }
 
-      // Generate events
-      const events: any[] = []
-      const openFrame = (node: any, value: number) => {
-        events.push({
-          type: 'O',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()),
-        })
+      const events: {type: 'O' | 'C'; frame: number; at: number}[] = []
+      props.profile.forEachCall(
+        (node, value) =>
+          events.push({
+            type: 'O',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
+        (node, value) =>
+          events.push({
+            type: 'C',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
+      )
+
+      // Filter to interval with synthetic boundaries (reuse logic)
+      let filtered = filterEventsWithContext(events, startValue, endValue)
+      filtered.sort((a, b) => a.at - b.at)
+
+      // Compress frames and remap filtered events
+      const compressed = compressFramesAndRemap(frames, filtered)
+      const framesSlim = compressed.frames
+      filtered = compressed.events
+
+      // Build stack transitions and durations
+      const stack: number[] = []
+      const lines: string[] = []
+
+      // Symbol table
+      lines.push('# symbols')
+      for (let i = 0; i < framesSlim.length; i++) {
+        lines.push(`${i}\t${framesSlim[i].name}`)
       }
-      const closeFrame = (node: any, value: number) => {
-        events.push({
-          type: 'C',
-          frame: getIndexForFrame(node.frame),
-          at: parseInt(value.toString()),
-        })
+      lines.push('# frames are referenced by index from left (top) to right (bottom)')
+      lines.push('# stack [ top ... bottom ]\t<duration> (same units as profile)')
+
+      let prevTime = filtered.length > 0 ? filtered[0].at : startValue
+      for (const ev of filtered) {
+        // On transition, emit previous stack with duration
+        const duration = ev.at - prevTime
+        if (duration > 0 && stack.length > 0) {
+          const stackText = `[ ${stack.join(' ')} ]\t${duration}`
+          lines.push(stackText)
+        }
+
+        // Apply event
+        if (ev.type === 'O') {
+          // Push opened frame to top (leftmost)
+          stack.unshift(ev.frame)
+        } else {
+          // Close: remove the first occurrence from top (leftmost first)
+          const idx = stack.indexOf(ev.frame)
+          if (idx >= 0) stack.splice(idx, 1)
+        }
+        prevTime = ev.at
       }
 
-      originalProfile.forEachCall(openFrame, closeFrame)
-
-      // Apply filtering algorithm
-      const filteredEvents = filterEventsWithContext(events, startValue, endValue)
-
-      // Use the actual first and last event timestamps from the filtered events
-      const sortedEvents = filteredEvents.sort((a, b) => a.at - b.at)
-      const profileStartValue =
-        sortedEvents.length > 0 ? parseInt(sortedEvents[0].at.toString()) : 0
-      const profileEndValue =
-        sortedEvents.length > 0 ? parseInt(sortedEvents[sortedEvents.length - 1].at.toString()) : 0
-
-      // Create the exported data structure
-      const exportedData = {
-        exporter: `speedscope@${require('../../package.json').version}`,
-        name: `${props.profile.getName()} (${formatValue(startValue)} - ${formatValue(endValue)})`,
-        activeProfileIndex: 0,
-        $schema: 'https://www.speedscope.app/file-format-schema.json',
-        shared: {frames},
-        profiles: [
-          {
-            type: 'evented',
-            name: props.profile.getName(),
-            unit: props.profile.getWeightUnit(),
-            startValue: profileStartValue,
-            endValue: profileEndValue,
-            events: filteredEvents,
-          },
-        ],
+      // Flush tail up to endValue if needed
+      const tailDuration = endValue - prevTime
+      if (tailDuration > 0 && stack.length > 0) {
+        lines.push(`[ ${stack.join(' ')} ]\t${tailDuration}`)
       }
 
-      return JSON.stringify(exportedData, null, 2)
+      return lines.join('\n')
     } catch (error) {
-      throw new Error('Error generating JSON data: ' + (error as Error).message)
+      throw new Error('Error generating text data: ' + (error as Error).message)
     }
   }
 
@@ -463,7 +473,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
 
     try {
-      const jsonData = generateFilteredJsonData()
+      const textData = generateFilteredTextData()
       const oauthConfig = {
         clientId,
         clientSecret,
@@ -474,7 +484,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
         provider: llmProvider,
         // endpoint, maxTokens, and temperature are now hardcoded in the adapters
       }
-      props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, jsonData, llmConfig)
+      props.onConfirm(startValue, endValue, oauthConfig, selectedPrompt, textData, llmConfig)
     } catch (error) {
       alert('Error preparing data for LLM: ' + (error as Error).message)
     }
