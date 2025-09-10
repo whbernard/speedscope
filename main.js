@@ -327,6 +327,18 @@ ipcMain.handle('llm-request', async (event, request) => {
     }
   } catch (error) {
     console.error('LLM request failed:', error)
+    
+    // Capture full response data if available
+    let responseData = null
+    if (error.response) {
+      responseData = {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        headers: error.response.headers,
+        data: error.response.data
+      }
+    }
+    
     const errorWithPayload = new Error(`LLM request failed: ${error.message}`)
     errorWithPayload.requestPayload = {
       endpoint: request.endpoint,
@@ -338,6 +350,7 @@ ipcMain.handle('llm-request', async (event, request) => {
       custom_headers: request.custom_headers,
       request_schema: request.request_schema
     }
+    errorWithPayload.responseData = responseData
     throw errorWithPayload
   }
 })

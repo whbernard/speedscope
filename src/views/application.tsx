@@ -21,6 +21,12 @@ import {ProfileGroupState} from '../app-state/profile-group'
 import {HttpService} from '../services/adapters'
 import {AnalysisService} from '../services/analysis-service'
 import {marked} from 'marked'
+
+// Configure marked for proper markdown rendering
+marked.setOptions({
+  breaks: true,
+  gfm: true
+})
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
 import {SandwichViewContainer} from './sandwich-view'
@@ -183,6 +189,7 @@ interface ApplicationState {
   errorDetails: {
     message: string
     requestPayload?: any
+    responseData?: any
   } | null
   showMarkdownModal: boolean
   markdownContent: string
@@ -779,6 +786,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
       errorDetails: {
         message: error.message,
         requestPayload: (error as any).requestPayload,
+        responseData: (error as any).responseData,
       },
     })
   }
@@ -1093,6 +1101,14 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
                 <div className={css(style.errorMessage)}>
                   <strong>Error:</strong> {this.state.errorDetails.message}
                 </div>
+                {this.state.errorDetails.responseData && (
+                  <div className={css(style.errorPayload)}>
+                    <strong>Response Data:</strong>
+                    <pre className={css(style.jsonPayload)}>
+                      {JSON.stringify(this.state.errorDetails.responseData, null, 2)}
+                    </pre>
+                  </div>
+                )}
                 {this.state.errorDetails.requestPayload && (
                   <div className={css(style.errorPayload)}>
                     <strong>Request Payload:</strong>
