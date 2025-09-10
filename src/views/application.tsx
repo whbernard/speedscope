@@ -22,12 +22,26 @@ import {HttpService} from '../services/adapters'
 import {AnalysisService} from '../services/analysis-service'
 import {marked} from 'marked'
 
+// Create custom renderer for better code block handling
+const customRenderer = new marked.Renderer()
+
+// Custom code block renderer to ensure proper formatting
+customRenderer.code = function ({text, lang}: {text: string; lang?: string}) {
+  const validLang = lang || ''
+  return `<pre class="code-block"><code class="language-${validLang}">${text}</code></pre>`
+}
+
+// Custom inline code renderer
+customRenderer.codespan = function ({text}: {text: string}) {
+  return `<code class="inline-code">${text}</code>`
+}
+
 // Configure marked for proper markdown rendering
 marked.setOptions({
   breaks: true,
   gfm: true,
   pedantic: false,
-  renderer: new marked.Renderer()
+  renderer: customRenderer,
 })
 import {HashParams} from '../lib/hash-params'
 import {Component} from 'preact'
@@ -1449,198 +1463,160 @@ const getStyle = withTheme(theme =>
     },
     markdownStyles: {
       selectors: {
-        ' h1, h2, h3, h4, h5, h6': {
-          marginTop: '32px',
-          marginBottom: '20px',
-          color: theme.fgPrimaryColor,
-          fontWeight: 'bold',
-          lineHeight: 1.2,
-          fontFamily: FontFamily.MONOSPACE,
-        },
+        // Headings with proper hierarchy
         ' h1': {
-          fontSize: '2.8em',
-          fontWeight: '900',
+          fontSize: '32px',
+          fontWeight: 'bold',
+          marginTop: '32px',
+          marginBottom: '16px',
+          color: theme.fgPrimaryColor,
           borderBottom: `3px solid ${theme.selectionPrimaryColor}`,
-          paddingBottom: '12px',
-          letterSpacing: '-0.02em',
+          paddingBottom: '8px',
         },
         ' h2': {
-          fontSize: '2.2em',
-          fontWeight: '800',
+          fontSize: '28px',
+          fontWeight: 'bold',
+          marginTop: '28px',
+          marginBottom: '14px',
+          color: theme.fgPrimaryColor,
           borderBottom: `2px solid ${theme.fgSecondaryColor}`,
-          paddingBottom: '10px',
-          letterSpacing: '-0.01em',
+          paddingBottom: '6px',
         },
         ' h3': {
-          fontSize: '1.8em',
-          fontWeight: '700',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          marginTop: '24px',
+          marginBottom: '12px',
           color: theme.selectionPrimaryColor,
         },
         ' h4': {
-          fontSize: '1.5em',
-          fontWeight: '700',
+          fontSize: '20px',
+          fontWeight: 'bold',
+          marginTop: '20px',
+          marginBottom: '10px',
+          color: theme.fgPrimaryColor,
         },
         ' h5': {
-          fontSize: '1.3em',
-          fontWeight: '600',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          marginTop: '18px',
+          marginBottom: '8px',
+          color: theme.fgPrimaryColor,
         },
         ' h6': {
-          fontSize: '1.1em',
-          fontWeight: '600',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          marginTop: '16px',
+          marginBottom: '8px',
           color: theme.fgSecondaryColor,
         },
+        // Paragraphs and text
         ' p': {
-          marginBottom: '18px',
-          fontSize: '17px',
-          lineHeight: 1.8,
-          fontWeight: '400',
+          fontSize: '16px',
+          lineHeight: 1.6,
+          marginBottom: '16px',
+          color: theme.fgPrimaryColor,
         },
         ' ul, ol': {
-          marginBottom: '18px',
-          paddingLeft: '32px',
+          marginBottom: '16px',
+          paddingLeft: '24px',
         },
         ' li': {
-          marginBottom: '8px',
-          fontSize: '17px',
-          lineHeight: 1.7,
-          fontWeight: '400',
+          fontSize: '16px',
+          lineHeight: 1.5,
+          marginBottom: '4px',
+          color: theme.fgPrimaryColor,
         },
         ' strong, b': {
-          fontWeight: '700',
+          fontWeight: 'bold',
           color: theme.fgPrimaryColor,
-          fontSize: '1.05em',
         },
         ' em, i': {
           fontStyle: 'italic',
-          fontWeight: '500',
-        },
-        ' mark': {
-          backgroundColor: theme.selectionPrimaryColor,
-          color: theme.altFgPrimaryColor,
-          padding: '2px 4px',
-          borderRadius: '3px',
-          fontWeight: '600',
-        },
-        ' code': {
-          backgroundColor: theme.bgSecondaryColor,
           color: theme.fgPrimaryColor,
-          padding: '4px 8px',
-          borderRadius: '5px',
-          fontFamily: FontFamily.MONOSPACE,
-          fontSize: '15px',
-          border: `2px solid ${theme.fgSecondaryColor}`,
-          fontWeight: '600',
-          letterSpacing: '0.02em',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
         },
-        ' pre': {
-          backgroundColor: theme.bgSecondaryColor,
-          color: theme.fgPrimaryColor,
-          padding: '20px',
+        // Code blocks - very distinct styling
+        ' .code-block': {
+          backgroundColor: '#1e1e1e',
+          color: '#d4d4d4',
+          padding: '16px',
           borderRadius: '8px',
+          marginBottom: '16px',
+          border: `2px solid ${theme.selectionPrimaryColor}`,
           overflow: 'auto',
-          marginBottom: '20px',
-          border: `2px solid ${theme.fgSecondaryColor}`,
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
-          fontSize: '15px',
-          lineHeight: 1.6,
+          fontSize: '14px',
+          lineHeight: 1.4,
+          fontFamily: FontFamily.MONOSPACE,
           whiteSpace: 'pre',
           wordWrap: 'normal',
           overflowWrap: 'normal',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         },
-        ' pre code': {
+        ' .code-block code': {
           backgroundColor: 'transparent',
+          color: '#d4d4d4',
           padding: 0,
           border: 'none',
-          fontSize: '15px',
-          lineHeight: 1.6,
-          color: theme.fgPrimaryColor,
-          fontWeight: '500',
-          letterSpacing: '0.01em',
+          fontSize: '14px',
+          fontFamily: FontFamily.MONOSPACE,
           whiteSpace: 'pre',
           wordWrap: 'normal',
           overflowWrap: 'normal',
         },
+        // Inline code - clearly different from code blocks
+        ' .inline-code': {
+          backgroundColor: theme.bgSecondaryColor,
+          color: theme.fgPrimaryColor,
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontFamily: FontFamily.MONOSPACE,
+          fontSize: '14px',
+          border: `1px solid ${theme.fgSecondaryColor}`,
+          fontWeight: '500',
+        },
+        // Blockquotes
         ' blockquote': {
-          borderLeft: `5px solid ${theme.selectionPrimaryColor}`,
-          paddingLeft: '24px',
+          borderLeft: `4px solid ${theme.selectionPrimaryColor}`,
+          paddingLeft: '16px',
           marginLeft: 0,
-          marginBottom: '20px',
+          marginBottom: '16px',
           fontStyle: 'italic',
           color: theme.fgSecondaryColor,
           backgroundColor: theme.bgSecondaryColor,
-          padding: '16px 24px',
-          borderRadius: '6px',
-          fontSize: '16px',
-          lineHeight: 1.7,
-          fontWeight: '500',
+          padding: '12px 16px',
+          borderRadius: '4px',
         },
+        // Tables
         ' table': {
           borderCollapse: 'collapse',
           width: '100%',
-          marginBottom: '20px',
-          border: `2px solid ${theme.fgSecondaryColor}`,
-          borderRadius: '6px',
-          overflow: 'hidden',
-          fontSize: '16px',
+          marginBottom: '16px',
+          border: `1px solid ${theme.fgSecondaryColor}`,
         },
         ' th, td': {
           border: `1px solid ${theme.fgSecondaryColor}`,
-          padding: '14px 18px',
+          padding: '8px 12px',
           textAlign: 'left',
-          fontSize: '16px',
-          lineHeight: 1.6,
+          fontSize: '14px',
         },
         ' th': {
           backgroundColor: theme.bgSecondaryColor,
-          fontWeight: '700',
+          fontWeight: 'bold',
           color: theme.fgPrimaryColor,
-          fontSize: '17px',
-          letterSpacing: '0.01em',
         },
+        // Links
         ' a': {
           color: theme.selectionPrimaryColor,
           textDecoration: 'underline',
-          fontWeight: '600',
-          fontSize: '1.02em',
         },
         ' a:hover': {
           color: theme.fgPrimaryColor,
-          textDecoration: 'none',
-          fontWeight: '700',
         },
+        // Horizontal rules
         ' hr': {
           border: 'none',
-          borderTop: `3px solid ${theme.fgSecondaryColor}`,
-          margin: '24px 0',
-          borderRadius: '2px',
-        },
-        ' del, s': {
-          textDecoration: 'line-through',
-          opacity: 0.7,
-          fontWeight: '400',
-        },
-        ' ins, u': {
-          textDecoration: 'underline',
-          fontWeight: '600',
-        },
-        ' tt, kbd, samp': {
-          fontFamily: FontFamily.MONOSPACE,
-          backgroundColor: theme.bgSecondaryColor,
-          padding: '2px 4px',
-          borderRadius: '3px',
-          fontSize: '14px',
-          whiteSpace: 'pre-wrap',
-        },
-        ' var': {
-          fontFamily: FontFamily.MONOSPACE,
-          fontStyle: 'italic',
-          color: theme.selectionPrimaryColor,
-        },
-        ' dfn': {
-          fontStyle: 'italic',
-          fontWeight: '600',
+          borderTop: `2px solid ${theme.fgSecondaryColor}`,
+          margin: '20px 0',
         },
       },
     },
