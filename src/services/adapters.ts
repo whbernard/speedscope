@@ -25,16 +25,10 @@ export interface OAuthRequest {
   endpoint: string
   client_id: string
   client_secret: string
-  grant_type?: string
-  scope?: string
-  client_id_field?: string
-  client_secret_field?: string
-  tls?: {
-    ca_pem?: string
-    ca_path?: string
-    disableCertValidation?: boolean
-    rejectUnauthorized?: boolean
-  }
+  grant_type: string
+  scope: string
+  client_id_field: string
+  client_secret_field: string
 }
 
 export interface OAuthResponse {
@@ -50,22 +44,8 @@ export interface LLMRequest {
   prompt: string
   profile_data: string
   access_token?: string
-  max_tokens?: number
-  temperature?: number
-  custom_headers?: Record<string, string>
-  request_schema?: {
-    messages?: Array<{
-      role: string
-      content: Array<{text: string}>
-    }>
-    system?: Array<{text: string}>
-    inferenceConfig?: {
-      maxTokens: number
-      temperature: number
-      topP: number
-      stopSequences: string[]
-    }
-  }
+  max_tokens: number
+  temperature: number
 }
 
 export interface LLMResponse {
@@ -104,36 +84,25 @@ export interface HttpBinaryResponse {
 
 // OAuth Adapter
 export class OAuthAdapter {
-  // Defaults (can be overridden per call)
   private static readonly OAUTH_ENDPOINT = 'https://api.example.com/oauth/token'
   private static readonly GRANT_TYPE = 'client_credentials'
   private static readonly SCOPE = 'api'
+  private static readonly CLIENT_ID_FIELD = 'client_id'
+  private static readonly CLIENT_SECRET_FIELD = 'client_secret'
 
-  static async requestToken(
-    clientId: string,
-    clientSecret: string,
-    customConfig?: {
-      endpoint?: string
-      grant_type?: string
-      scope?: string
-      client_id_field?: string
-      client_secret_field?: string
-      tls?: OAuthRequest['tls']
-    },
-  ): Promise<OAuthResponse> {
+  static async requestToken(clientId: string, clientSecret: string): Promise<OAuthResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
     }
 
     const request: OAuthRequest = {
-      endpoint: customConfig?.endpoint || this.OAUTH_ENDPOINT,
+      endpoint: this.OAUTH_ENDPOINT,
       client_id: clientId,
       client_secret: clientSecret,
-      grant_type: customConfig?.grant_type || this.GRANT_TYPE,
-      scope: customConfig?.scope || this.SCOPE,
-      client_id_field: customConfig?.client_id_field || 'client_id',
-      client_secret_field: customConfig?.client_secret_field || 'client_secret',
-      tls: customConfig?.tls,
+      grant_type: this.GRANT_TYPE,
+      scope: this.SCOPE,
+      client_id_field: this.CLIENT_ID_FIELD,
+      client_secret_field: this.CLIENT_SECRET_FIELD,
     }
 
     return await window.llmApi.oauthRequest(request)
@@ -142,7 +111,6 @@ export class OAuthAdapter {
 
 // LLM Adapter
 export class LLMAdapter {
-  // Hardcoded LLM configuration
   private static readonly LLM_ENDPOINT = 'https://api.anthropic.com/v1/messages'
   private static readonly DEFAULT_MAX_TOKENS = 2000
   private static readonly DEFAULT_TEMPERATURE = 0.7
@@ -151,40 +119,18 @@ export class LLMAdapter {
     prompt: string,
     profileData: string,
     accessToken: string | undefined,
-    customConfig?: {
-      endpoint?: string
-      max_tokens?: number
-      temperature?: number
-      custom_headers?: Record<string, string>
-      request_schema?: any
-    },
   ): Promise<LLMResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
     }
 
-    // Load default request schema and headers from config when not provided
-    let defaultRequestSchema: any | undefined
-    let defaultCustomHeaders: Record<string, string> | undefined
-    let defaultEndpoint: string | undefined
-    try {
-      const cfg = await window.llmApi.loadConfig()
-      defaultRequestSchema = cfg?.llm?.request_schema
-      defaultCustomHeaders = cfg?.llm?.custom_headers
-      defaultEndpoint = cfg?.llm?.endpoint
-    } catch {
-      // ignore config load errors, fall back to built-ins
-    }
-
     const request: LLMRequest = {
-      endpoint: customConfig?.endpoint || defaultEndpoint || this.LLM_ENDPOINT,
+      endpoint: this.LLM_ENDPOINT,
       prompt,
       profile_data: profileData,
       access_token: accessToken,
-      max_tokens: this.DEFAULT_MAX_TOKENS, // Use hardcoded max tokens
-      temperature: this.DEFAULT_TEMPERATURE, // Use hardcoded temperature
-      custom_headers: customConfig?.custom_headers || defaultCustomHeaders,
-      request_schema: customConfig?.request_schema || defaultRequestSchema,
+      max_tokens: this.DEFAULT_MAX_TOKENS,
+      temperature: this.DEFAULT_TEMPERATURE,
     }
 
     return await window.llmApi.llmRequest(request)
@@ -268,34 +214,6 @@ class NativeHttpService {
   static binaryResponseToArrayBuffer(response: HttpBinaryResponse): ArrayBuffer {
     return new Uint8Array(response.data).buffer
   }
-}
-
-// Service Types (exported for use by other services)
-export type OAuthProviderKey = 'generic'
-
-export interface OAuthCredentials {
-  endpoint?: string
-  clientId: string
-  clientSecret: string
-  scope?: string
-  grantType?: string
-  provider?: OAuthProviderKey
-}
-
-export interface OAuthToken {
-  accessToken: string
-  expiresAt: number // epoch millis
-  raw: any
-}
-
-export type LLMProviderKey = 'bedrockClaudeSonnet'
-
-export interface LLMConfig {
-  endpoint?: string
-  provider?: LLMProviderKey
-  model?: string
-  maxTokens?: number
-  temperature?: number
 }
 
 // HTTP Service

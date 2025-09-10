@@ -223,13 +223,6 @@ ipcMain.handle('oauth-request', async (event, request) => {
     }
 
     // Validate required request fields
-    const requiredFields = ['client_id_field', 'client_secret_field', 'grant_type', 'scope', 'client_id', 'client_secret']
-    for (const key of requiredFields) {
-      if (!request[key] || typeof request[key] !== 'string' || request[key].trim() === '') {
-        throw new Error(`OAuth request missing required field: ${key}`)
-      }
-    }
-
     if (!request.client_id || !request.client_secret) {
       throw new Error('OAuth request missing client_id or client_secret')
     }
@@ -241,42 +234,18 @@ ipcMain.handle('oauth-request', async (event, request) => {
       scope: request.scope
     }
 
-    // Prepare TLS/HTTPS options (simple: custom CA or disable validation)
-    let httpsAgent = undefined
-    if (request.tls) {
-      const tls = request.tls
-      let ca = undefined
-      if (tls.ca_pem) {
-        ca = tls.ca_pem
-      } else if (tls.ca_path) {
-        try {
-          const caPath = path.isAbsolute(tls.ca_path) ? tls.ca_path : path.join(__dirname, tls.ca_path)
-          ca = await fs.readFile(caPath)
-        } catch (e) {
-          console.warn('Failed to read OAuth CA from path:', e.message)
-        }
-      }
-      const disable = tls.disableCertValidation === true || tls.rejectUnauthorized === false
-      if (ca) {
-        httpsAgent = new https.Agent({ ca, rejectUnauthorized: !disable })
-      } else if (disable) {
-        httpsAgent = new https.Agent({ rejectUnauthorized: false })
-      }
-    }
-
     const response = await axios.post(resolvedEndpoint, payload, {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 30000,
-      httpsAgent
+      timeout: 30000
     })
 
     const responseData = response.data
     return {
-      access_token: responseData[config.oauth.response_schema.access_token_field],
-      expires_in: responseData[config.oauth.response_schema.expires_in_field],
-      token_type: responseData[config.oauth.response_schema.token_type_field]
+      access_token: responseData.access_token,
+      expires_in: responseData.expires_in,
+      token_type: responseData.token_type
     }
   } catch (error) {
     console.error('OAuth request failed:', error)
@@ -306,45 +275,11 @@ ipcMain.handle('llm-request', async (event, request) => {
       throw new Error('Rate limit exceeded')
     }
 
-    // Build payload based on request schema
-    let payload = {}
-    
-    if (request.request_schema && request.request_schema.messages) {
-      // Bedrock format
-      const messages = request.request_schema.messages.map(msgTemplate => {
-        const content = msgTemplate.content.map(contentItem => ({
-          text: replaceTemplateVariables(contentItem.text, {
-            prompt: request.prompt,
-            profile_data: request.profile_data
-          })
-        }))
-        return {
-          role: msgTemplate.role,
-          content
-        }
-      })
-      payload.messages = messages
-
-      if (request.request_schema.system) {
-        const system = request.request_schema.system.map(sysItem => ({
-          text: replaceTemplateVariables(sysItem.text, {
-            prompt: request.prompt,
-            profile_data: request.profile_data
-          })
-        }))
-        payload.system = system
-      }
-
-      if (request.request_schema.inferenceConfig) {
-        payload.inferenceConfig = request.request_schema.inferenceConfig
-      }
-    } else {
-      // Legacy format
-      payload = {
-        prompt: request.prompt,
-        max_tokens: request.max_tokens || 2000,
-        temperature: request.temperature || 0.7
-      }
+    // Build simple payload
+    const payload = {
+      prompt: request.prompt,
+      max_tokens: request.max_tokens,
+      temperature: request.temperature
     }
 
     // Build headers
@@ -352,21 +287,7 @@ ipcMain.handle('llm-request', async (event, request) => {
       'Content-Type': 'application/json'
     }
 
-    // Add custom headers with template variable replacement
-    if (request.custom_headers) {
-      for (const [key, value] of Object.entries(request.custom_headers)) {
-        const headerValue = replaceTemplateVariables(value, {
-          prompt: request.prompt,
-          profile_data: request.profile_data,
-          ACCESS_TOKEN: request.access_token || '',
-          AUTH_TOKEN: process.env.AUTH_TOKEN || '',
-          USER_ID: process.env.USER_ID || ''
-        })
-        headers[key] = headerValue
-      }
-    }
-
-    // Override Authorization header if access_token is provided
+    // Add Authorization header if access_token is provided
     if (request.access_token) {
       headers.Authorization = `Bearer ${request.access_token}`
     }

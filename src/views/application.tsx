@@ -531,7 +531,6 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
     oauthConfig: any,
     analysisPrompt?: string,
     filteredJsonData?: string,
-    llmConfig?: any,
   ) => {
     this.setState({
       showIntervalSelector: false,
@@ -692,10 +691,6 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         // Get the active profile for formatting values
         const activeProfile = this.props.activeProfileState.profile
 
-        // Get configurations from the interval selector
-        const llmEndpoint = llmConfig?.endpoint || 'https://api.anthropic.com/v1/messages'
-        // Endpoint provided directly via configuration
-
         // Use the prompt from the interval selector or default
         const finalPrompt =
           analysisPrompt || 'Identify performance bottlenecks in this profile data'
@@ -707,18 +702,8 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           const analysisResponse = await AnalysisService.analyzeProfile({
             prompt: finalPrompt,
             profileData: jsonData,
-            oauthCredentials: {
-              endpoint: oauthConfig.oauthUrl,
-              clientId: oauthConfig.clientId,
-              clientSecret: oauthConfig.clientSecret,
-              scope: oauthConfig.scope || 'api',
-              grantType: oauthConfig.grantType || 'client_credentials',
-            },
-            llmConfig: {
-              endpoint: llmEndpoint,
-              maxTokens: 2000,
-              temperature: 0.7,
-            },
+            clientId: oauthConfig.clientId,
+            clientSecret: oauthConfig.clientSecret,
           })
 
           // Hide loading screen
