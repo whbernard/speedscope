@@ -7,7 +7,10 @@ interface FileSystemEntry {
   readonly name: string
   readonly fullPath: string
   readonly filesystem: FileSystem
-  getParent(successCallback?: (entry: FileSystemEntry) => void, errorCallback?: (error: Error) => void): void
+  getParent(
+    successCallback?: (entry: FileSystemEntry) => void,
+    errorCallback?: (error: Error) => void,
+  ): void
 }
 
 interface FileSystemFileEntry extends FileSystemEntry {
@@ -23,7 +26,10 @@ interface FileSystemDirectoryEntry extends FileSystemEntry {
 }
 
 interface FileSystemDirectoryReader {
-  readEntries(successCallback: (entries: FileSystemEntry[]) => void, errorCallback?: (error: Error) => void): void
+  readEntries(
+    successCallback: (entries: FileSystemEntry[]) => void,
+    errorCallback?: (error: Error) => void,
+  ): void
 }
 
 interface FileSystem {

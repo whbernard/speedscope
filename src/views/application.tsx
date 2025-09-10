@@ -687,9 +687,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
 
         // Get configurations from the interval selector
         const llmEndpoint = llmConfig?.endpoint || 'https://api.anthropic.com/v1/messages'
-        let authHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
-        }
+        // Endpoint provided directly via configuration
 
         // Use the prompt from the interval selector or default
         const finalPrompt =
@@ -697,7 +695,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
 
         // Use AnalysisService to handle both OAuth and LLM calls
         this.setState({loadingMessage: 'Sending to API...'})
-        
+
         try {
           const analysisResponse = await AnalysisService.analyzeProfile({
             prompt: finalPrompt,
@@ -727,8 +725,7 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
           )
         } catch (error) {
           console.error('Analysis error:', error)
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error'
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
           // Hide loading screen and return to interval selector
           this.setState({
@@ -821,7 +818,9 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
         // Use Electron HTTP service for binary data instead of browser fetch
         const response = await HttpService.getBinary(profileURL)
         if (response.status < 200 || response.status >= 300) {
-          throw new Error(`Failed to load profile from URL: ${response.status} ${response.statusText}`)
+          throw new Error(
+            `Failed to load profile from URL: ${response.status} ${response.statusText}`,
+          )
         }
         let filename = new URL(profileURL, window.location.href).pathname
         if (filename.includes('/')) {
@@ -867,25 +866,28 @@ export class Application extends Component<ApplicationProps, ApplicationState> {
             >
               flamegraph
             </a>{' '}
-            visualizer with <strong>🧠 AI-powered analysis</strong>. Use it to help you make your software faster.
+            visualizer with <strong>🧠 AI-powered analysis</strong>. Use it to help you make your
+            software faster.
           </p>
           <p className={css(style.landingP)}>
-            <strong>LLM Integration:</strong> Analyze any selected time interval with AI models. Click
-            {' '}<strong>🧠 Send to LLM</strong>{' '}in the toolbar to preview the interval, authenticate via
-            {' '}OAuth client credentials, and send the serialized profile data to
-            your configured LLM endpoint for insights and recommendations.
+            <strong>LLM Integration:</strong> Analyze any selected time interval with AI models.
+            Click <strong>🧠 Send to LLM</strong> in the toolbar to preview the interval,
+            authenticate via OAuth client credentials, and send the serialized profile data to your
+            configured LLM endpoint for insights and recommendations.
           </p>
           <p className={css(style.landingP)}>
-            <em>This project was forked from{' '}
-            <a
-              className={css(style.link)}
-              href="https://github.com/jlfwong/speedscope"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              speedscope
-            </a>{' '}
-            and enhanced with LLM integration capabilities.</em>
+            <em>
+              This project was forked from{' '}
+              <a
+                className={css(style.link)}
+                href="https://github.com/jlfwong/speedscope"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                speedscope
+              </a>{' '}
+              and enhanced with LLM integration capabilities.
+            </em>
           </p>
           {canUseXHR ? (
             <p className={css(style.landingP)}>

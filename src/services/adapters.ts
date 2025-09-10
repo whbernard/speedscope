@@ -4,9 +4,13 @@ export interface LlmApi {
   oauthRequest: (request: OAuthRequest) => Promise<OAuthResponse>
   llmRequest: (request: LLMRequest) => Promise<LLMResponse>
   httpRequest: (request: HttpRequest) => Promise<HttpResponse>
-  storeToken: (data: { service: string; account: string; token: string }) => Promise<{ success: boolean }>
-  getToken: (data: { service: string; account: string }) => Promise<{ token: string | null }>
-  deleteToken: (data: { service: string; account: string }) => Promise<{ success: boolean }>
+  storeToken: (data: {
+    service: string
+    account: string
+    token: string
+  }) => Promise<{success: boolean}>
+  getToken: (data: {service: string; account: string}) => Promise<{token: string | null}>
+  deleteToken: (data: {service: string; account: string}) => Promise<{success: boolean}>
   loadConfig: () => Promise<any>
 }
 
@@ -52,9 +56,9 @@ export interface LLMRequest {
   request_schema?: {
     messages?: Array<{
       role: string
-      content: Array<{ text: string }>
+      content: Array<{text: string}>
     }>
-    system?: Array<{ text: string }>
+    system?: Array<{text: string}>
     inferenceConfig?: {
       maxTokens: number
       temperature: number
@@ -115,7 +119,7 @@ export class OAuthAdapter {
       client_id_field?: string
       client_secret_field?: string
       tls?: OAuthRequest['tls']
-    }
+    },
   ): Promise<OAuthResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
@@ -129,7 +133,7 @@ export class OAuthAdapter {
       scope: customConfig?.scope || this.SCOPE,
       client_id_field: customConfig?.client_id_field || 'client_id',
       client_secret_field: customConfig?.client_secret_field || 'client_secret',
-      tls: customConfig?.tls
+      tls: customConfig?.tls,
     }
 
     return await window.llmApi.oauthRequest(request)
@@ -153,7 +157,7 @@ export class LLMAdapter {
       temperature?: number
       custom_headers?: Record<string, string>
       request_schema?: any
-    }
+    },
   ): Promise<LLMResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
@@ -180,7 +184,7 @@ export class LLMAdapter {
       max_tokens: this.DEFAULT_MAX_TOKENS, // Use hardcoded max tokens
       temperature: this.DEFAULT_TEMPERATURE, // Use hardcoded temperature
       custom_headers: customConfig?.custom_headers || defaultCustomHeaders,
-      request_schema: customConfig?.request_schema || defaultRequestSchema
+      request_schema: customConfig?.request_schema || defaultRequestSchema,
     }
 
     return await window.llmApi.llmRequest(request)
@@ -197,7 +201,7 @@ class NativeHttpService {
     const request: HttpRequest = {
       method: 'GET',
       url,
-      headers
+      headers,
     }
 
     const response = await window.llmApi.httpRequest(request)
@@ -206,11 +210,15 @@ class NativeHttpService {
       status: response.status,
       statusText: response.status < 400 ? 'OK' : 'Error',
       headers: response.headers,
-      body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+      body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
     }
   }
 
-  static async post(url: string, body: any, headers: Record<string, string> = {}): Promise<HttpResponse> {
+  static async post(
+    url: string,
+    body: any,
+    headers: Record<string, string> = {},
+  ): Promise<HttpResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
     }
@@ -219,7 +227,7 @@ class NativeHttpService {
       method: 'POST',
       url,
       body,
-      headers
+      headers,
     }
 
     const response = await window.llmApi.httpRequest(request)
@@ -228,11 +236,14 @@ class NativeHttpService {
       status: response.status,
       statusText: response.status < 400 ? 'OK' : 'Error',
       headers: response.headers,
-      body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+      body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
     }
   }
 
-  static async getBinary(url: string, headers: Record<string, string> = {}): Promise<HttpBinaryResponse> {
+  static async getBinary(
+    url: string,
+    headers: Record<string, string> = {},
+  ): Promise<HttpBinaryResponse> {
     if (!window.llmApi) {
       throw new Error('Electron API not available')
     }
@@ -241,7 +252,7 @@ class NativeHttpService {
       method: 'GET',
       url,
       headers,
-      binary: true
+      binary: true,
     }
 
     const response = await window.llmApi.httpRequest(request)
@@ -250,7 +261,7 @@ class NativeHttpService {
       status: response.status,
       statusText: response.status < 400 ? 'OK' : 'Error',
       headers: response.headers,
-      body: response.data
+      body: response.data,
     }
   }
 
@@ -315,7 +326,7 @@ export class HttpService {
   static async post(
     url: string,
     body: string,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
   ): Promise<HttpResponse> {
     return await NativeHttpService.post(url, body, headers)
   }
@@ -326,20 +337,23 @@ export class HttpService {
   static async postJson(
     url: string,
     data: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
   ): Promise<HttpResponse> {
     const jsonHeaders = {
       'Content-Type': 'application/json',
       ...headers,
     }
-    
+
     return this.post(url, JSON.stringify(data), jsonHeaders)
   }
 
   /**
    * Make a GET request and return binary data
    */
-  static async getBinary(url: string, headers: Record<string, string> = {}): Promise<HttpBinaryResponse> {
+  static async getBinary(
+    url: string,
+    headers: Record<string, string> = {},
+  ): Promise<HttpBinaryResponse> {
     return await NativeHttpService.getBinary(url, headers)
   }
 

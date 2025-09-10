@@ -32,7 +32,7 @@ export class AnalysisService {
     // Step 1: Get OAuth token using OAuth adapter (with hardcoded endpoint, grant_type, and scope)
     const oauthResponse = await OAuthAdapter.requestToken(
       request.oauthCredentials.clientId,
-      request.oauthCredentials.clientSecret
+      request.oauthCredentials.clientSecret,
       // endpoint, grant_type, and scope are now hardcoded in OAuthAdapter
     )
 
@@ -40,7 +40,7 @@ export class AnalysisService {
     const llmResponse = await LLMAdapter.sendPrompt(
       request.prompt,
       request.profileData,
-      oauthResponse.access_token
+      oauthResponse.access_token,
       // endpoint, provider, max_tokens, and temperature are now hardcoded in LLMAdapter
     )
 
@@ -54,7 +54,7 @@ export class AnalysisService {
     prompt: string,
     profileData: string,
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
   ): Promise<string> {
     const response = await this.analyzeProfile({
       prompt,

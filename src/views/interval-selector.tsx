@@ -453,9 +453,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
 
   const handleConfirm = () => {
     if (!clientId || !clientSecret) {
-      alert(
-        'Please fill in all authentication fields: Client ID and Client Secret',
-      )
+      alert('Please fill in all authentication fields: Client ID and Client Secret')
       return
     }
 
