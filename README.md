@@ -89,36 +89,30 @@ npm run dev
 
 ### Debugging Configuration
 
-#### 1. Electron Main Process Debugging
-Create `.vscode/launch.json`:
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug Electron Main",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
-      "windows": {
-        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
-      },
-      "args": [".", "--inspect=5858"],
-      "outputCapture": "std",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Debug Electron Renderer",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:8000",
-      "webRoot": "${workspaceFolder}/src",
-      "sourceMaps": true
-    }
-  ]
-}
-```
+The `.vscode/launch.json` file is already configured with three debugging options:
+
+#### 1. **Debug Electron (Main + Renderer)** - Recommended
+- **Best for**: Full app debugging with both main and renderer processes
+- **Usage**: Press `F5` or select from Run & Debug panel
+- **Features**: 
+  - Main process debugging on port 5858
+  - Renderer process debugging on port 9222
+  - Full breakpoint support in both contexts
+
+#### 2. **Debug Electron Main** - Main Process Only
+- **Best for**: Debugging IPC handlers, OAuth/LLM requests, file operations
+- **Usage**: Set breakpoints in `main.js` and related files
+- **Features**: Node.js debugging with full access to main process
+
+#### 3. **Debug Electron Renderer** - Renderer Process Only  
+- **Best for**: Debugging React components, frontend logic
+- **Usage**: Set breakpoints in `src/` files
+- **Features**: Chromium DevTools integration
+
+#### 4. **Debug Tests** - Jest Testing
+- **Best for**: Debugging individual test cases
+- **Usage**: Set breakpoints in test files, run specific tests
+- **Features**: Full Jest debugging with breakpoints
 
 #### 2. Frontend Debugging
 - **React DevTools**: Install browser extension
@@ -216,6 +210,43 @@ npm run electron:build
 - **Error modals**: Full request context provided
 - **DevTools**: Network, Console, and Performance tabs
 - **GitHub Issues**: Report bugs with full error details
+
+### 🔍 Debugging Verification
+
+To verify VS Code debugging is working:
+
+1. **Open VS Code** in the project directory:
+   ```bash
+   code .
+   ```
+
+2. **Set a breakpoint** in `main.js` (e.g., line 210 in the OAuth handler)
+
+3. **Start debugging**:
+   - Press `F5` or go to Run & Debug panel
+   - Select "Debug Electron (Main + Renderer)"
+   - The app should start and hit your breakpoint
+
+4. **Test breakpoints**:
+   - Set breakpoints in `src/views/application.tsx` for frontend debugging
+   - Set breakpoints in `main.js` for backend debugging
+   - Use the debug console to inspect variables
+
+5. **Verify features**:
+   - ✅ Main process debugging (Node.js context)
+   - ✅ Renderer process debugging (React context)  
+   - ✅ Breakpoint support in both processes
+   - ✅ Variable inspection and watch expressions
+   - ✅ Call stack navigation
+   - ✅ Error modal with full request payloads
+
+**Expected output when debugging starts:**
+```
+Debugger listening on ws://127.0.0.1:5858/...
+DevTools listening on ws://127.0.0.1:9222/...
+App name set to: Speedscope with LLM
+Window ready to show
+```
 
 ## 🖥️ Desktop setup by platform
 
