@@ -115,7 +115,9 @@ Create a `.vscode/launch.json` file with the following configuration:
       "resolveSourceMapLocations": [
         "${workspaceFolder}/**",
         "!**/node_modules/**"
-      ]
+      ],
+      "outFiles": ["${workspaceFolder}/build/**/*.js"],
+      "preLaunchTask": "npm: build"
     },
     {
       "name": "Debug Electron Main",
@@ -252,6 +254,20 @@ Create a `.vscode/launch.json` file with the following configuration:
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "npm: build",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "npm: electron:dev",
       "type": "shell",
       "command": "npm",
@@ -386,6 +402,7 @@ npm run electron:build
 1. **"Electron API not available"**: Ensure running in Electron context
 2. **"Config file not found"**: Normal warning, using defaults
 3. **TypeScript errors**: Run `npm run typecheck` for details
+4. **White screen when debugging**: See debugging troubleshooting below
 4. **Build failures**: Check Node.js version (18+ required)
 
 #### Getting Help
@@ -486,6 +503,51 @@ If breakpoints still don't work:
 console.log('Debug point reached:', variableName);
 debugger; // Force breakpoint
 ```
+
+### 🔧 **Troubleshooting White Screen Issues**
+
+If you see a white screen when launching "Debug Electron (Main + Renderer)":
+
+#### **1. Ensure Build is Up to Date**
+```bash
+# Clean and rebuild
+rm -rf build/
+npm run build
+```
+
+#### **2. Check VS Code Launch Configuration**
+Ensure your `.vscode/launch.json` includes:
+```json
+{
+  "name": "Debug Electron (Main + Renderer)",
+  "preLaunchTask": "npm: build",
+  "outFiles": ["${workspaceFolder}/build/**/*.js"],
+  "sourceMaps": true
+}
+```
+
+#### **3. Verify File Protocol Loading**
+The app loads `build/index.html` via file protocol. Check:
+- `build/index.html` exists and has content
+- `build/speedscope-*.js` files exist
+- No CORS errors in DevTools console
+
+#### **4. Check Electron Security Settings**
+If still having issues, temporarily modify `main.js`:
+```javascript
+webPreferences: {
+  nodeIntegration: false,
+  contextIsolation: true,
+  preload: path.join(__dirname, 'preload.js'),
+  webSecurity: false, // Already set for development
+  allowRunningInsecureContent: true // Already set for development
+}
+```
+
+#### **5. Alternative Debugging Methods**
+- **Use "Debug Electron Main"** instead of the combined option
+- **Run `npm run electron:dev`** in terminal, then attach debugger
+- **Use Chrome DevTools** at `http://localhost:9222` for renderer debugging
 
 ## 🖥️ Desktop setup by platform
 
