@@ -17,7 +17,7 @@
     "jest": "./scripts/test-setup.sh && jest --runInBand",
     "coverage": "npm run jest -- --coverage",
     "typecheck": "tsc --noEmit",
-    "test": "./scripts/ci.sh",
+    "test": "npm run typecheck && npm run lint && npm run coverage",
     "serve": "tsx scripts/dev-server.ts",
     "dev": "tsx scripts/dev-server.ts",
     "build": "tsx scripts/build-release.ts --outdir build --protocol file && node scripts/copy-config.js",
