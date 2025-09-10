@@ -374,6 +374,108 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     }
   }
 
+  const generateFilteredJsonData = () => {
+    try {
+      // Build frames table and event list for the full profile
+      const frames: any[] = []
+      const indexForFrame = new Map<any, number>()
+      function getIndexForFrame(frame: any): number {
+        let index = indexForFrame.get(frame)
+        if (index == null) {
+          const serializedFrame: any = {name: frame.name}
+          if (frame.file != null) serializedFrame.file = frame.file
+          if (frame.line != null) serializedFrame.line = frame.line
+          if (frame.col != null) serializedFrame.col = frame.col
+          index = frames.length
+          indexForFrame.set(frame, index)
+          frames.push(serializedFrame)
+        }
+        return index
+      }
+
+      const events: {type: 'O' | 'C'; frame: number; at: number}[] = []
+      props.profile.forEachCall(
+        (node, value) =>
+          events.push({
+            type: 'O',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
+        (node, value) =>
+          events.push({
+            type: 'C',
+            frame: getIndexForFrame(node.frame),
+            at: parseInt(value.toString()),
+          }),
+      )
+
+      // Filter events within the selected interval
+      const filteredEvents = events.filter(event => {
+        return event.at >= startValue && event.at <= endValue
+      })
+
+      // Get unique frame indices from filtered events
+      const frameIndices = new Set<number>()
+      filteredEvents.forEach(event => {
+        frameIndices.add(event.frame)
+      })
+
+      // Build symbol table with only frames that appear in the filtered events
+      const symbolTable: Array<{name: string}> = []
+      const frameIndexMap = new Map<number, number>()
+      let newIndex = 0
+
+      frameIndices.forEach(frameIndex => {
+        const frame = frames[frameIndex]
+        if (frame) {
+          symbolTable.push({name: frame.name})
+          frameIndexMap.set(frameIndex, newIndex)
+          newIndex++
+        }
+      })
+
+      // Compress the filtered events by combining consecutive events with the same frame
+      const compressedEvents: Array<{at: number; frame: number}> = []
+      let lastEvent: {at: number; frame: number} | null = null
+
+      filteredEvents.forEach(event => {
+        const newFrameIndex = frameIndexMap.get(event.frame)
+        if (newFrameIndex !== undefined) {
+          if (lastEvent && lastEvent.frame === newFrameIndex) {
+            // Combine with previous event
+            lastEvent.at = event.at
+          } else {
+            // Start new event
+            lastEvent = {at: event.at, frame: newFrameIndex}
+            compressedEvents.push(lastEvent)
+          }
+        }
+      })
+
+      const result = {
+        version: '0.5.0',
+        $schema: 'https://www.speedscope.app/file-format-schema.json',
+        shared: {
+          frames: symbolTable,
+        },
+        profiles: [
+          {
+            type: 'evented',
+            name: 'Filtered Profile',
+            unit: 'microseconds',
+            startValue,
+            endValue,
+            events: compressedEvents,
+          },
+        ],
+      }
+
+      return JSON.stringify(result, null, 2)
+    } catch (error) {
+      throw new Error('Error generating JSON data: ' + (error as Error).message)
+    }
+  }
+
   const generateFilteredTextData = () => {
     try {
       // Build frames table and event list for the full profile
@@ -507,6 +609,39 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
     handleConfirm()
   }
 
+  const handleExportPreviewJson = () => {
+    try {
+      const jsonData = generateFilteredJsonData()
+      const blob = new Blob([jsonData], {type: 'application/json'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `filtered-profile-${startValue}-${endValue}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert('Error exporting JSON: ' + (error as Error).message)
+    }
+  }
+
+  const handleExportPreviewText = () => {
+    try {
+      const blob = new Blob([previewContent], {type: 'text/plain'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `filtered-profile-${startValue}-${endValue}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      alert('Error exporting text: ' + (error as Error).message)
+    }
+  }
+
   return (
     <div
       className={css(style.overlay)}
@@ -631,7 +766,7 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
             onClick={handleExportText}
             style={{marginLeft: 12}}
           >
-            📄 Export Text
+            📄 Export Condensed Format
           </button>
         </div>
 
@@ -664,18 +799,34 @@ export function IntervalSelector(props: IntervalSelectorProps): JSX.Element {
                 <pre>{previewContent}</pre>
               </div>
               <div className={css(style.previewActions)}>
-                <button
-                  className={css(style.button, style.cancelButton)}
-                  onClick={() => setShowPreview(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className={css(style.button, style.confirmButton)}
-                  onClick={handlePreviewConfirm}
-                >
-                  Send to LLM
-                </button>
+                <div className={css(style.exportButtonsGroup)}>
+                  <button
+                    className={css(style.button, style.exportButton)}
+                    onClick={handleExportPreviewJson}
+                  >
+                    📄 Export JSON
+                  </button>
+                  <button
+                    className={css(style.button, style.exportButton)}
+                    onClick={handleExportPreviewText}
+                  >
+                    📄 Export Condensed Format
+                  </button>
+                </div>
+                <div className={css(style.actionButtonsGroup)}>
+                  <button
+                    className={css(style.button, style.cancelButton)}
+                    onClick={() => setShowPreview(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={css(style.button, style.confirmButton)}
+                    onClick={handlePreviewConfirm}
+                  >
+                    Send to LLM
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1009,7 +1160,16 @@ const getStyle = withTheme(theme =>
       padding: '16px 24px',
       borderTop: `1px solid ${theme.fgSecondaryColor}`,
       display: 'flex',
-      justifyContent: 'flex-end',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '12px',
+    },
+    exportButtonsGroup: {
+      display: 'flex',
+      gap: '8px',
+    },
+    actionButtonsGroup: {
+      display: 'flex',
       gap: '12px',
     },
   }),
