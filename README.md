@@ -89,32 +89,210 @@ npm run dev
 
 ### Debugging Configuration
 
-The `.vscode/launch.json` file is already configured with three debugging options:
+Create a `.vscode/launch.json` file with the following configuration:
 
-#### 1. **Debug Electron (Main + Renderer)** - Recommended
-- **Best for**: Full app debugging with both main and renderer processes
-- **Usage**: Press `F5` or select from Run & Debug panel
-- **Features**: 
-  - Main process debugging on port 5858
-  - Renderer process debugging on port 9222
-  - Full breakpoint support in both contexts
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Electron (Main + Renderer)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--inspect=5858", "--remote-debugging-port=9222"],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Electron Main",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--inspect=5858"],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
+      "name": "Debug Electron Renderer",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--remote-debugging-port=9222"],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--runInBand", "--no-cache"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    }
+  ]
+}
+```
 
-#### 2. **Debug Electron Main** - Main Process Only
-- **Best for**: Debugging IPC handlers, OAuth/LLM requests, file operations
-- **Usage**: Set breakpoints in `main.js` and related files
-- **Features**: Node.js debugging with full access to main process
+#### Debugging Options:
 
-#### 3. **Debug Electron Renderer** - Renderer Process Only  
-- **Best for**: Debugging React components, frontend logic
-- **Usage**: Set breakpoints in `src/` files
-- **Features**: Chromium DevTools integration
+1. **Debug Electron (Main + Renderer)** - Recommended
+   - **Best for**: Full app debugging with both main and renderer processes
+   - **Usage**: Press `F5` or select from Run & Debug panel
+   - **Features**: 
+     - Main process debugging on port 5858
+     - Renderer process debugging on port 9222
+     - Full breakpoint support in both contexts
 
-#### 4. **Debug Tests** - Jest Testing
-- **Best for**: Debugging individual test cases
-- **Usage**: Set breakpoints in test files, run specific tests
-- **Features**: Full Jest debugging with breakpoints
+2. **Debug Electron Main** - Main Process Only
+   - **Best for**: Debugging IPC handlers, OAuth/LLM requests, file operations
+   - **Usage**: Set breakpoints in `main.js` and related files
+   - **Features**: Node.js debugging with full access to main process
 
-#### 2. Frontend Debugging
+3. **Debug Electron Renderer** - Renderer Process Only  
+   - **Best for**: Debugging React components, frontend logic
+   - **Usage**: Set breakpoints in `src/` files
+   - **Features**: Chromium DevTools integration
+
+4. **Debug Tests** - Jest Testing
+   - **Best for**: Debugging individual test cases
+   - **Usage**: Set breakpoints in test files, run specific tests
+   - **Features**: Full Jest debugging with breakpoints
+
+#### Additional VS Code Configuration
+
+**Recommended Extensions** (`.vscode/extensions.json`):
+```json
+{
+  "recommendations": [
+    "ms-vscode.vscode-typescript-next",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "firsttris.vscode-jest-runner",
+    "ms-vscode.vscode-json",
+    "bradlc.vscode-tailwindcss",
+    "rangav.vscode-thunder-client"
+  ]
+}
+```
+
+**Editor Settings** (`.vscode/settings.json`):
+```json
+{
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "jest.jestCommandLine": "npm test --",
+  "jest.autoRun": "off",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/coverage": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/coverage": true
+  },
+  "emmet.includeLanguages": {
+    "typescript": "html",
+    "typescriptreact": "html"
+  }
+}
+```
+
+**Development Tasks** (`.vscode/tasks.json`):
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: electron:dev",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "electron:dev"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: test",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: typecheck",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "typecheck"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}
+```
+
+#### Frontend Debugging
 - **React DevTools**: Install browser extension
 - **Redux DevTools**: Available in development mode
 - **Console Logging**: Use `console.log()` in renderer process
