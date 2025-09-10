@@ -110,7 +110,12 @@ Create a `.vscode/launch.json` file with the following configuration:
       "env": {
         "NODE_ENV": "development"
       },
-      "skipFiles": ["<node_internals>/**"]
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ]
     },
     {
       "name": "Debug Electron Main",
@@ -424,6 +429,62 @@ Debugger listening on ws://127.0.0.1:5858/...
 DevTools listening on ws://127.0.0.1:9222/...
 App name set to: Speedscope with LLM
 Window ready to show
+```
+
+### 🔧 **Troubleshooting Breakpoint Issues**
+
+If your breakpoints are "unbinding" (turning gray) after debug starts:
+
+#### **1. Ensure Source Maps Are Generated**
+```bash
+# Check if source maps exist
+ls -la build/*.map
+
+# Rebuild with source maps
+npm run build
+```
+
+#### **2. Fix VS Code Launch Configuration**
+Add these properties to your launch.json:
+```json
+{
+  "sourceMaps": true,
+  "resolveSourceMapLocations": [
+    "${workspaceFolder}/**",
+    "!**/node_modules/**"
+  ],
+  "outFiles": ["${workspaceFolder}/build/**/*.js"]
+}
+```
+
+#### **3. Set Breakpoints After Debug Starts**
+- **Don't set breakpoints before starting debug**
+- **Start the debugger first**
+- **Then set breakpoints in the running code**
+- **Wait for "Debugger attached" message**
+
+#### **4. Use Chrome DevTools for Renderer Process**
+- Open Chrome DevTools: `http://localhost:9222`
+- Set breakpoints directly in Chrome DevTools
+- More reliable for frontend debugging
+
+#### **5. Check File Paths**
+- Ensure breakpoints are in files that are actually bundled
+- Check that the file path matches exactly (case-sensitive)
+- Avoid breakpoints in files that aren't imported
+
+#### **6. Restart Debug Session**
+- Stop the debugger completely
+- Clear VS Code's debug cache: `Ctrl+Shift+P` → "Debug: Clear Breakpoints"
+- Restart the debug session
+- Set breakpoints again
+
+#### **7. Alternative: Use Console Logging**
+If breakpoints still don't work:
+```typescript
+// Add temporary logging
+console.log('Debug point reached:', variableName);
+debugger; // Force breakpoint
 ```
 
 ## 🖥️ Desktop setup by platform
