@@ -27,8 +27,6 @@ export interface OAuthRequest {
   client_secret: string
   grant_type: string
   scope: string
-  client_id_field: string
-  client_secret_field: string
 }
 
 export interface OAuthResponse {
@@ -87,8 +85,6 @@ export class OAuthAdapter {
   private static readonly OAUTH_ENDPOINT = 'https://api.example.com/oauth/token'
   private static readonly GRANT_TYPE = 'client_credentials'
   private static readonly SCOPE = 'api'
-  private static readonly CLIENT_ID_FIELD = 'client_id'
-  private static readonly CLIENT_SECRET_FIELD = 'client_secret'
 
   static async requestToken(clientId: string, clientSecret: string): Promise<OAuthResponse> {
     if (!window.llmApi) {
@@ -101,8 +97,6 @@ export class OAuthAdapter {
       client_secret: clientSecret,
       grant_type: this.GRANT_TYPE,
       scope: this.SCOPE,
-      client_id_field: this.CLIENT_ID_FIELD,
-      client_secret_field: this.CLIENT_SECRET_FIELD,
     }
 
     return await window.llmApi.oauthRequest(request)

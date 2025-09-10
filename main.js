@@ -228,8 +228,8 @@ ipcMain.handle('oauth-request', async (event, request) => {
     }
 
     const payload = {
-      [request.client_id_field]: request.client_id,
-      [request.client_secret_field]: request.client_secret,
+      client_id: request.client_id,
+      client_secret: request.client_secret,
       grant_type: request.grant_type,
       scope: request.scope
     }
